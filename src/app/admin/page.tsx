@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
-import { Calendar, DollarSign, CreditCard, Wallet, TrendingUp } from 'lucide-react'
+import { Calendar, DollarSign, CreditCard, Wallet, TrendingUp, AlertTriangle, XCircle } from 'lucide-react'
 import { FileUpload } from '@/components/ui/file-upload'
 import { Modal } from '@/components/ui/modal'
 import { StatCard } from '@/components/ui/stat-card'
@@ -28,6 +28,15 @@ interface ShiftPhoto {
   description: string | null
 }
 
+interface Fine {
+  id: string
+  user_id: string
+  amount: number
+  date: string
+  comment: string | null
+  created_at: string
+}
+
 export default function AdminPage() {
   const supabase = createClient()
   const [shifts, setShifts] = useState<Shift[]>([])
@@ -37,12 +46,16 @@ export default function AdminPage() {
   const [shiftPhotos, setShiftPhotos] = useState<ShiftPhoto[]>([])
   const [admins, setAdmins] = useState<Array<{id: string, full_name: string}>>([])
   const [isManager, setIsManager] = useState(false)
+  const [fines, setFines] = useState<Fine[]>([])
+  const [showFinesModal, setShowFinesModal] = useState(false)
   
   // Stats state
   const [stats, setStats] = useState({
     totalRevenue: 0,
     totalCash: 0,
     totalBonus: 0,
+    shiftEarnings: 0,
+    estimatedEarnings: 0,
   })
   
   // Form state
@@ -61,6 +74,7 @@ export default function AdminPage() {
     loadShifts()
     checkUserRole()
     loadAdmins()
+    loadFines()
   }, [])
 
   // Устанавливаем user_id текущего пользователя при загрузке
@@ -93,10 +107,26 @@ export default function AdminPage() {
       const totalCash = data?.reduce((sum, shift) => sum + shift.cash_balance, 0) || 0
       const totalBonus = data?.reduce((sum, shift) => sum + shift.bonus_amount, 0) || 0
       
+      // Расчет заработка за смены (дневная = 1500, ночная = 2200)
+      const shiftEarnings = data?.reduce((sum, shift) => {
+        return sum + (shift.shift_type === 'day' ? 1500 : 2200)
+      }, 0) || 0
+      
+      // Расчет штрафов за текущий месяц
+      const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM
+      const monthlyFines = fines
+        .filter(fine => fine.date.startsWith(currentMonth))
+        .reduce((sum, fine) => sum + fine.amount, 0)
+      
+      // Примерный заработок = заработок за смены + премия - штрафы
+      const estimatedEarnings = shiftEarnings + totalBonus - monthlyFines
+      
       setStats({
         totalRevenue,
         totalCash,
         totalBonus,
+        shiftEarnings,
+        estimatedEarnings,
       })
     } catch (error) {
       console.error('Error loading shifts:', error)
@@ -148,6 +178,29 @@ export default function AdminPage() {
       setAdmins(data || [])
     } catch (error) {
       console.error('Error loading admins:', error)
+    }
+  }
+
+  const loadFines = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data, error } = await supabase
+        .from('fines')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false })
+
+      if (error) {
+        console.error('Error loading fines:', error)
+        setFines([])
+      } else {
+        setFines(data || [])
+      }
+    } catch (error) {
+      console.error('Error loading fines:', error)
+      setFines([])
     }
   }
 
@@ -332,16 +385,25 @@ export default function AdminPage() {
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
           Мои смены
         </h2>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
-        >
-          {showForm ? 'Отмена' : '+ Новая смена'}
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            {showForm ? 'Отмена' : 'Закрыть смену'}
+          </button>
+          <button
+            onClick={() => setShowFinesModal(true)}
+            className="w-full sm:w-auto bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-2"
+          >
+            <AlertTriangle className="w-5 h-5" />
+            Штрафы
+          </button>
+        </div>
       </div>
 
       {/* Статистика */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Общая выручка"
           value={formatCurrency(stats.totalRevenue)}
@@ -353,10 +415,68 @@ export default function AdminPage() {
           icon={Wallet}
         />
         <StatCard
-          title="Премия"
-          value={formatCurrency(stats.totalBonus)}
+          title="Заработано за смены"
+          value={formatCurrency(stats.shiftEarnings)}
+          icon={Calendar}
+        />
+        <StatCard
+          title="Примерный заработок"
+          value={formatCurrency(stats.estimatedEarnings)}
           icon={TrendingUp}
         />
+      </div>
+
+      {/* Штрафы */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-orange-600" />
+            Штрафы
+          </h3>
+          <span className="text-sm text-gray-600 dark:text-gray-400">
+            Всего штрафов: {fines.length}
+          </span>
+        </div>
+        
+        {fines.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                    Дата
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                    Сумма
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                    Комментарий
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                {fines.map((fine) => (
+                  <tr key={fine.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                      {new Date(fine.date).toLocaleDateString('ru-RU')}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-red-600 dark:text-red-400 font-medium">
+                      {formatCurrency(fine.amount)}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                      {fine.comment || '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-8 text-gray-900 dark:text-gray-100">
+            <AlertTriangle className="mx-auto h-12 w-12 text-gray-500 dark:text-gray-600" />
+            <p className="mt-2 text-gray-900 dark:text-gray-100">У вас нет штрафов</p>
+          </div>
+        )}
       </div>
 
       {showForm && (
@@ -633,6 +753,68 @@ export default function AdminPage() {
                   <p className="text-gray-900 dark:text-gray-100">Нет фотографий</p>
                 )}
               </div>
+        </Modal>
+      )}
+
+      {/* Модальное окно штрафов */}
+      {showFinesModal && (
+        <Modal
+          isOpen={showFinesModal}
+          onClose={() => setShowFinesModal(false)}
+          title="Штрафы за текущий месяц"
+        >
+          <div className="space-y-4">
+            {fines.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                        Дата
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                        Сумма
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                        Комментарий
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {fines
+                      .filter(fine => fine.date.startsWith(new Date().toISOString().slice(0, 7)))
+                      .map((fine) => (
+                        <tr key={fine.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                            {new Date(fine.date).toLocaleDateString('ru-RU')}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-red-600 dark:text-red-400 font-medium">
+                            {formatCurrency(fine.amount)}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                            {fine.comment || '-'}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+                <div className="mt-4 bg-red-50 dark:bg-red-900/20 p-4 rounded">
+                  <p className="text-sm font-medium text-red-800 dark:text-red-400">
+                    Всего штрафов за месяц: {formatCurrency(
+                      fines
+                        .filter(fine => fine.date.startsWith(new Date().toISOString().slice(0, 7)))
+                        .reduce((sum, fine) => sum + fine.amount, 0)
+                    )}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-900 dark:text-gray-100">
+                <AlertTriangle className="mx-auto h-12 w-12 text-gray-500 dark:text-gray-600" />
+                <p className="mt-2 text-gray-900 dark:text-gray-100">У вас нет штрафов за текущий месяц</p>
+              </div>
+            )}
+          </div>
         </Modal>
       )}
     </div>

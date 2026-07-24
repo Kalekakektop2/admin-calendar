@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths } from 'date-fns'
 import { ru } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, DollarSign, CreditCard, Wallet, TrendingUp, Users, Image as ImageIcon, Plus, BarChart3, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, DollarSign, CreditCard, Wallet, TrendingUp, Users, Image as ImageIcon, Plus, BarChart3, Trash2, AlertTriangle, Sun, Moon } from 'lucide-react'
 import { StatCard } from '@/components/ui/stat-card'
 import { Modal } from '@/components/ui/modal'
 import { formatCurrency } from '@/lib/utils'
@@ -247,6 +247,13 @@ export default function ManagerPage() {
             Создать администратора
           </button>
           <button
+            onClick={() => router.push('/manager/fines')}
+            className="w-full sm:w-auto bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-2"
+          >
+            <AlertTriangle className="w-5 h-5" />
+            Штрафы
+          </button>
+          <button
             onClick={() => router.push('/manager/delete-admin')}
             className="w-full sm:w-auto bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
           >
@@ -333,8 +340,13 @@ export default function ManagerPage() {
               >
                 <span className="text-xs text-gray-900 dark:text-gray-100 font-medium">{format(date, 'd')}</span>
                 {hasShifts && dayShifts.map((shift) => (
-                  <div key={shift.id} className="text-xs text-gray-900 dark:text-gray-100 truncate w-full text-center">
-                    {shift.users.full_name}
+                  <div key={shift.id} className="text-xs text-gray-900 dark:text-gray-100 truncate w-full text-center flex items-center justify-center gap-1">
+                    {shift.shift_type === 'day' ? (
+                      <Sun className="w-3 h-3 text-yellow-500" />
+                    ) : (
+                      <Moon className="w-3 h-3 text-blue-500" />
+                    )}
+                    <span className="truncate">{shift.users.full_name}</span>
                   </div>
                 ))}
               </button>
