@@ -116,19 +116,19 @@ export default function CreateAdminPage() {
   }
 
   return (
-    <div className="max-w-md mx-auto">
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-6">Создать администратора</h2>
-        
+    <div className="max-w-md mx-auto px-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6">Создать администратора</h2>
+
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded mb-4">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-900 mb-1">
+            <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
               Имя
             </label>
             <input
@@ -136,12 +136,12 @@ export default function CreateAdminPage() {
               required
               value={formData.full_name}
               onChange={(e) => setFormData({...formData, full_name: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-900 mb-1">
+            <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
               Логин
             </label>
             <input
@@ -149,12 +149,12 @@ export default function CreateAdminPage() {
               required
               value={formData.username}
               onChange={(e) => setFormData({...formData, username: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-900 mb-1">
+            <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
               Пароль
             </label>
             <input
@@ -163,23 +163,23 @@ export default function CreateAdminPage() {
               minLength={6}
               value={formData.password}
               onChange={(e) => setFormData({...formData, password: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700"
             />
-            <p className="text-xs text-gray-700 mt-1">Минимум 6 символов</p>
+            <p className="text-xs text-gray-700 dark:text-gray-400 mt-1">Минимум 6 символов</p>
           </div>
 
-          <div className="flex justify-end space-x-3">
+          <div className="flex flex-col sm:flex-row justify-end gap-3">
             <button
               type="button"
               onClick={() => router.push('/manager')}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-900 hover:bg-gray-50"
+              className="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               Отмена
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
+              className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
             >
               {loading ? 'Создание...' : 'Создать'}
             </button>

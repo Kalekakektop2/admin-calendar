@@ -227,21 +227,21 @@ export default function ManagerPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
           Панель руководителя
         </h2>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <button
             onClick={() => router.push('/manager/monthly-reports')}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+            className="w-full sm:w-auto bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
           >
             <BarChart3 className="w-5 h-5" />
             Месячные отчеты
           </button>
           <button
             onClick={() => router.push('/manager/create-admin')}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
+            className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
           >
             <Plus className="w-5 h-5" />
             Создать администратора
@@ -250,7 +250,7 @@ export default function ManagerPage() {
       </div>
 
       {/* Dashboard Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
           title="Общая выручка"
           value={formatCurrency(stats.totalRevenue)}
@@ -279,15 +279,15 @@ export default function ManagerPage() {
       </div>
 
       {/* Calendar */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <div className="flex items-center justify-between mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
           <button
             onClick={previousMonth}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-900 dark:text-gray-100"
           >
             <ChevronLeft className="w-5 h-5 text-gray-900 dark:text-gray-100" />
           </button>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
             {format(currentDate, 'MMMM yyyy', { locale: ru })}
           </h2>
           <button
@@ -298,15 +298,15 @@ export default function ManagerPage() {
           </button>
         </div>
 
-        <div className="grid grid-cols-7 gap-2 mb-2">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2">
           {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((day) => (
-            <div key={day} className="text-center text-sm font-medium text-gray-900 dark:text-gray-100">
+            <div key={day} className="text-center text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100">
               {day}
             </div>
           ))}
         </div>
 
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2">
           {daysInMonth.map((date) => {
             const dayShifts = getShiftsForDate(date)
             const hasShifts = dayShifts.length > 0
@@ -318,7 +318,7 @@ export default function ManagerPage() {
                 onClick={() => handleDateClick(date)}
                 disabled={!hasShifts}
                 className={`
-                  aspect-square rounded-lg flex flex-col items-center justify-center p-1
+                  aspect-square rounded-lg flex flex-col items-center justify-center p-0.5 sm:p-1
                   ${hasShifts ? 'hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer text-gray-900 dark:text-gray-100' : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'}
                   ${isSelected ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100 font-bold' : 'text-gray-900 dark:text-gray-100'}
                   ${!isSameMonth(date, currentDate) ? 'text-gray-300 dark:text-gray-600' : ''}
@@ -347,44 +347,44 @@ export default function ManagerPage() {
           }}
           title={`Смена от ${format(selectedDate || new Date(selectedShift.shift_date), 'dd MMM yyyy', { locale: ru })}`}
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6">
             <div>
-              <p className="text-sm text-gray-900 dark:text-gray-100">Администратор</p>
-              <p className="font-semibold text-gray-900 dark:text-gray-100">{selectedShift.users.full_name}</p>
-              <p className="text-sm text-gray-900 dark:text-gray-100">{selectedShift.users.email}</p>
+              <p className="text-sm text-gray-700 dark:text-gray-300">Администратор</p>
+              <p className="font-semibold text-gray-900 dark:text-white">{selectedShift.users.full_name}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{selectedShift.users.email}</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
-                <p className="text-xs text-gray-900 dark:text-gray-100">Выручка</p>
-                <p className="font-bold text-gray-900 dark:text-gray-100">{formatCurrency(selectedShift.total_revenue)}</p>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
+                <p className="text-xs text-gray-600 dark:text-gray-400">Выручка</p>
+                <p className="font-bold text-gray-900 dark:text-white">{formatCurrency(selectedShift.total_revenue)}</p>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
-                <p className="text-xs text-gray-900 dark:text-gray-100">Премия</p>
+              <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
+                <p className="text-xs text-gray-600 dark:text-gray-400">Премия</p>
                 <p className="font-bold text-green-600 dark:text-green-400">{formatCurrency(selectedShift.bonus_amount)}</p>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
-                <p className="text-xs text-gray-900 dark:text-gray-100">Наличные</p>
-                <p className="font-bold text-gray-900 dark:text-gray-100">{formatCurrency(selectedShift.cash_balance)}</p>
+              <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
+                <p className="text-xs text-gray-600 dark:text-gray-400">Наличные</p>
+                <p className="font-bold text-gray-900 dark:text-white">{formatCurrency(selectedShift.cash_balance)}</p>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
-                <p className="text-xs text-gray-900 dark:text-gray-100">Тип смены</p>
-                <p className="font-bold text-gray-900 dark:text-gray-100">{selectedShift.shift_type === 'day' ? 'День' : 'Ночь'}</p>
+              <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
+                <p className="text-xs text-gray-600 dark:text-gray-400">Тип смены</p>
+                <p className="font-bold text-gray-900 dark:text-white">{selectedShift.shift_type === 'day' ? 'День' : 'Ночь'}</p>
               </div>
             </div>
           </div>
 
           {selectedShift.notes && (
             <div className="mb-6">
-              <h4 className="font-semibold mb-2 text-gray-900 dark:text-gray-100">Примечания</h4>
-              <p className="text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-700 p-3 rounded">{selectedShift.notes}</p>
+              <h4 className="font-semibold mb-2 text-gray-900 dark:text-white">Примечания</h4>
+              <p className="text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded">{selectedShift.notes}</p>
             </div>
           )}
 
           <div>
-            <h4 className="font-semibold mb-4 text-gray-900 dark:text-gray-100">Фотофиксация ({shiftPhotos.length})</h4>
+            <h4 className="font-semibold mb-4 text-gray-900 dark:text-white">Фотофиксация ({shiftPhotos.length})</h4>
             {shiftPhotos.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {shiftPhotos.map((photo) => (
                   <div key={photo.id} className="relative group">
                     <img
@@ -400,8 +400,8 @@ export default function ManagerPage() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-900 bg-gray-50 rounded-lg">
-                <ImageIcon className="mx-auto h-12 w-12 text-gray-700" />
+              <div className="text-center py-8 text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <ImageIcon className="mx-auto h-12 w-12 text-gray-700 dark:text-gray-500" />
                 <p className="mt-2 text-gray-900 dark:text-gray-100">Нет фотографий для этой смены</p>
               </div>
             )}
@@ -411,22 +411,23 @@ export default function ManagerPage() {
 
       {/* All shifts for current month */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        <div className="p-6 border-b dark:border-gray-700">
+        <div className="p-4 sm:p-6 border-b dark:border-gray-700">
           <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Все смены за месяц</h3>
         </div>
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-700">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
-                Дата
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
-                Администратор
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
-                Тип смены
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                  Дата
+                </th>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                  Администратор
+                </th>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                  Тип смены
+                </th>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
                 Выручка
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
@@ -446,22 +447,22 @@ export default function ManagerPage() {
               
               return (
                 <tr key={shift.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {format(displayDate, 'dd MMM yyyy', { locale: ru })}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {shift.users.full_name}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {shift.shift_type === 'day' ? 'День' : 'Ночь'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {formatCurrency(shift.total_revenue)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 dark:text-green-400 font-medium">
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-green-600 dark:text-green-400 font-medium">
                     {formatCurrency(shift.bonus_amount)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     <button
                       onClick={() => {
                         setSelectedShift(shift)
@@ -478,6 +479,7 @@ export default function ManagerPage() {
             })}
           </tbody>
         </table>
+        </div>
 
         {shifts.length === 0 && (
           <div className="text-center py-12 text-gray-700 dark:text-gray-300">

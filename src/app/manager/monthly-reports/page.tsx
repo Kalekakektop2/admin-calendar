@@ -119,7 +119,7 @@ export default function MonthlyReportsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-2 sm:px-0">
       <div className="flex items-center justify-between">
         <button
           onClick={() => router.push('/manager')}
@@ -127,14 +127,14 @@ export default function MonthlyReportsPage() {
         >
           ← Назад
         </button>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
           Месячные отчеты администраторов
         </h2>
         <div></div>
       </div>
 
       {/* Выбор месяца */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
         <div className="flex items-center justify-center">
           <button
             onClick={previousMonth}
@@ -142,7 +142,7 @@ export default function MonthlyReportsPage() {
           >
             <ChevronLeft className="w-5 h-5 text-gray-900 dark:text-gray-100" />
           </button>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mx-4">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mx-4">
             {format(currentDate, 'MMMM yyyy', { locale: ru })}
           </h2>
           <button
@@ -155,7 +155,7 @@ export default function MonthlyReportsPage() {
       </div>
 
       {/* Общая статистика */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Общая выручка"
           value={formatCurrency(totalStats.totalRevenue)}
@@ -180,66 +180,68 @@ export default function MonthlyReportsPage() {
 
       {/* Отчеты по администраторам */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        <div className="p-6 border-b dark:border-gray-700">
+        <div className="p-4 sm:p-6 border-b dark:border-gray-700">
           <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Отчеты по администраторам</h3>
         </div>
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-700">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
-                Администратор
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
-                Дневных
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
-                Ночных
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
-                Всего смен
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
-                Выручка
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
-                Наличка
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
-                Премия
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {adminStats.map((admin) => (
-              <tr key={admin.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{admin.full_name}</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">{admin.email}</div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                  {admin.dayShifts}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                  {admin.nightShifts}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                  {admin.shiftCount}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                  {formatCurrency(admin.totalRevenue)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                  {formatCurrency(admin.totalCash)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 dark:text-green-400 font-medium">
-                  {formatCurrency(admin.totalBonus)}
-                </td>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                  Администратор
+                </th>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                  Дневных
+                </th>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                  Ночных
+                </th>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                  Всего смен
+                </th>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                  Выручка
+                </th>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                  Наличка
+                </th>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                  Премия
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              {adminStats.map((admin) => (
+                <tr key={admin.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                    <div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{admin.full_name}</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">{admin.email}</div>
+                    </div>
+                  </td>
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                    {admin.dayShifts}
+                  </td>
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                    {admin.nightShifts}
+                  </td>
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                    {admin.shiftCount}
+                  </td>
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                    {formatCurrency(admin.totalRevenue)}
+                  </td>
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                    {formatCurrency(admin.totalCash)}
+                  </td>
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-green-600 dark:text-green-400 font-medium">
+                    {formatCurrency(admin.totalBonus)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         {adminStats.length === 0 && (
           <div className="text-center py-12 text-gray-700 dark:text-gray-300">

@@ -48,21 +48,21 @@ export default async function ManagerLayout({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+              <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
                 Админский календарь
               </h1>
-              <span className="ml-4 px-2 py-1 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 rounded">
+              <span className="ml-2 sm:ml-4 px-2 py-1 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 rounded">
                 Руководитель
               </span>
             </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-900 dark:text-gray-100">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <span className="text-xs sm:text-sm text-gray-900 dark:text-gray-100 hidden sm:block">
                 {userData.full_name}
               </span>
               <ThemeToggle />
               <Link
                 href="/logout"
-                className="text-sm text-gray-900 dark:text-gray-100 hover:text-gray-700 dark:hover:text-gray-300"
+                className="text-xs sm:text-sm text-gray-900 dark:text-gray-100 hover:text-gray-700 dark:hover:text-gray-300"
               >
                 Выйти
               </Link>
@@ -70,7 +70,7 @@ export default async function ManagerLayout({
           </div>
         </div>
       </nav>
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         {children}
       </main>
     </div>

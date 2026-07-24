@@ -327,21 +327,21 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+    <div className="space-y-6 px-2 sm:px-0">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
           Мои смены
         </h2>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+          className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
         >
           {showForm ? 'Отмена' : '+ Новая смена'}
         </button>
       </div>
 
       {/* Статистика */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
           title="Общая выручка"
           value={formatCurrency(stats.totalRevenue)}
@@ -360,10 +360,10 @@ export default function AdminPage() {
       </div>
 
       {showForm && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Отчет за смену</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
                   Дата смены
@@ -482,18 +482,18 @@ export default function AdminPage() {
               </div>
             )}
 
-            <div className="flex justify-end space-x-3">
+            <div className="flex flex-col sm:flex-row justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-900 hover:bg-gray-50"
+                className="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
                 Отмена
               </button>
               <button
                 type="submit"
                 disabled={uploading || photos.length === 0}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {uploading ? 'Сохранение...' : photos.length === 0 ? 'Загрузите фото' : 'Сохранить'}
               </button>
@@ -509,30 +509,31 @@ export default function AdminPage() {
       )}
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-700">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
-                Дата
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
-                Выручка
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
-                Наличные
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
-                Тип смены
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
-                Премия
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
-                Действия
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                  Дата
+                </th>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                  Выручка
+                </th>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                  Наличные
+                </th>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                  Тип смены
+                </th>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                  Премия
+                </th>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                  Действия
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {shifts.map((shift) => {
               // Для ночных смен показываем предыдущий день в таблице
               const displayDate = shift.shift_type === 'night' 
@@ -541,22 +542,22 @@ export default function AdminPage() {
               
               return (
                 <tr key={shift.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {format(displayDate, 'dd MMM yyyy', { locale: ru })}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {formatCurrency(shift.total_revenue)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {formatCurrency(shift.cash_balance)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {shift.shift_type === 'day' ? 'День' : 'Ночь'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 dark:text-green-400 font-medium">
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-green-600 dark:text-green-400 font-medium">
                     {formatCurrency(shift.bonus_amount)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     <button
                       onClick={() => {
                         setSelectedShift(shift)
@@ -572,6 +573,7 @@ export default function AdminPage() {
             })}
           </tbody>
         </table>
+        </div>
         
         {shifts.length === 0 && (
           <div className="text-center py-12 text-gray-900 dark:text-gray-100">
@@ -591,32 +593,32 @@ export default function AdminPage() {
               : new Date(selectedShift.shift_date), 
             'dd MMM yyyy', { locale: ru })}`}
         >
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="bg-gray-50 p-4 rounded">
-              <p className="text-sm text-gray-900">Общая выручка</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(selectedShift.total_revenue)}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded">
+              <p className="text-sm text-gray-900 dark:text-gray-100">Общая выручка</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{formatCurrency(selectedShift.total_revenue)}</p>
             </div>
-            <div className="bg-gray-50 p-4 rounded">
-              <p className="text-sm text-gray-900">Наличные</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(selectedShift.cash_balance)}</p>
+            <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded">
+              <p className="text-sm text-gray-900 dark:text-gray-100">Наличные</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{formatCurrency(selectedShift.cash_balance)}</p>
             </div>
-            <div className="bg-gray-50 p-4 rounded">
-              <p className="text-sm text-gray-900">Премия</p>
-              <p className="text-2xl font-bold text-green-600">{formatCurrency(selectedShift.bonus_amount)}</p>
+            <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded">
+              <p className="text-sm text-gray-900 dark:text-gray-100">Премия</p>
+              <p className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(selectedShift.bonus_amount)}</p>
             </div>
           </div>
 
               {selectedShift.notes && (
                 <div className="mb-6">
-                  <h4 className="font-semibold mb-2 text-gray-900">Примечания</h4>
-                  <p className="text-gray-900">{selectedShift.notes}</p>
+                  <h4 className="font-semibold mb-2 text-gray-900 dark:text-gray-100">Примечания</h4>
+                  <p className="text-gray-900 dark:text-gray-100">{selectedShift.notes}</p>
                 </div>
               )}
 
               <div>
-                <h4 className="font-semibold mb-4 text-gray-900">Фотофиксация</h4>
+                <h4 className="font-semibold mb-4 text-gray-900 dark:text-gray-100">Фотофиксация</h4>
                 {shiftPhotos.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {shiftPhotos.map((photo) => (
                       <div key={photo.id} className="relative">
                         <img
@@ -628,7 +630,7 @@ export default function AdminPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-900">Нет фотографий</p>
+                  <p className="text-gray-900 dark:text-gray-100">Нет фотографий</p>
                 )}
               </div>
         </Modal>
