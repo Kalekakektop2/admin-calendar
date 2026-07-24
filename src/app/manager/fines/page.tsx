@@ -12,6 +12,7 @@ interface Fine {
   id: string
   user_id: string
   amount: number
+  fine_date: string
   date: string
   comment: string | null
   created_at: string
@@ -50,7 +51,7 @@ export default function FinesPage() {
       const { data, error } = await supabase
         .from('fines')
         .select('*, users(full_name)')
-        .order('date', { ascending: false })
+        .order('fine_date', { ascending: false })
 
       if (error) {
         console.error('Error loading fines:', error)
@@ -103,7 +104,7 @@ export default function FinesPage() {
       console.log('Попытка добавить штраф:', {
         user_id: formData.user_id,
         amount: amount,
-        date: formData.date,
+        fine_date: formData.date,
         comment: formData.comment
       })
 
@@ -112,7 +113,7 @@ export default function FinesPage() {
         .insert({
           user_id: formData.user_id,
           amount: amount,
-          date: formData.date,
+          fine_date: formData.date,
           comment: formData.comment || null,
         })
 
@@ -319,7 +320,7 @@ export default function FinesPage() {
                     {formatCurrency(fine.amount)}
                   </td>
                   <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {new Date(fine.date).toLocaleDateString('ru-RU')}
+                    {new Date(fine.fine_date).toLocaleDateString('ru-RU')}
                   </td>
                   <td className="px-4 sm:px-6 py-3 sm:py-4 text-sm text-gray-900 dark:text-gray-100">
                     {fine.comment || '-'}

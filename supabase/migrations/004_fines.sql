@@ -3,10 +3,24 @@ CREATE TABLE IF NOT EXISTS fines (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   amount DECIMAL(10, 2) NOT NULL,
-  date DATE NOT NULL,
+  fine_date DATE NOT NULL,
   comment TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );
+
+-- Добавляем поле date если его нет (для совместимости)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'fines' AND column_name = 'date'
+  ) THEN
+    ALTER TABLE fines ADD COLUMN date DATE;
+  END IF;
+END $$;
+
+-- Убедимся что поле date имеет правильное значение по умолчанию
+ALTER TABLE fines ALTER COLUMN date SET DEFAULT fine_date;
 
 -- Включаем RLS
 ALTER TABLE fines ENABLE ROW LEVEL SECURITY;

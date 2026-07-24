@@ -32,6 +32,7 @@ interface Fine {
   id: string
   user_id: string
   amount: number
+  fine_date: string
   date: string
   comment: string | null
   created_at: string
@@ -117,7 +118,7 @@ export default function AdminPage() {
       // Расчет штрафов за текущий месяц
       const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM
       const monthlyFines = fines
-        .filter(fine => fine.date.startsWith(currentMonth))
+        .filter(fine => fine.fine_date.startsWith(currentMonth))
         .reduce((sum, fine) => sum + fine.amount, 0)
       
       // Примерный заработок = заработок за смены + премия - штрафы
@@ -197,7 +198,7 @@ export default function AdminPage() {
         .from('fines')
         .select('*')
         .eq('user_id', user.id)
-        .order('date', { ascending: false })
+        .order('fine_date', { ascending: false })
 
       if (error) {
         console.error('Error loading fines:', error)
@@ -480,7 +481,7 @@ export default function AdminPage() {
                 {fines.map((fine) => (
                   <tr key={fine.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                      {new Date(fine.date).toLocaleDateString('ru-RU')}
+                      {new Date(fine.fine_date).toLocaleDateString('ru-RU')}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-red-600 dark:text-red-400 font-medium">
                       {formatCurrency(fine.amount)}
@@ -841,7 +842,7 @@ export default function AdminPage() {
                   <p className="text-sm font-medium text-red-800 dark:text-red-400">
                     Всего штрафов за месяц: {formatCurrency(
                       fines
-                        .filter(fine => fine.date.startsWith(new Date().toISOString().slice(0, 7)))
+                        .filter(fine => fine.fine_date.startsWith(new Date().toISOString().slice(0, 7)))
                         .reduce((sum, fine) => sum + fine.amount, 0)
                     )}
                   </p>
