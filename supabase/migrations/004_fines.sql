@@ -11,6 +11,13 @@ CREATE TABLE IF NOT EXISTS fines (
 -- Включаем RLS
 ALTER TABLE fines ENABLE ROW LEVEL SECURITY;
 
+-- Удаляем существующие политики если они есть
+DROP POLICY IF EXISTS "Users can view own fines" ON fines;
+DROP POLICY IF EXISTS "Managers can view all fines" ON fines;
+DROP POLICY IF EXISTS "Managers can create fines" ON fines;
+DROP POLICY IF EXISTS "Managers can update fines" ON fines;
+DROP POLICY IF EXISTS "Managers can delete fines" ON fines;
+
 -- Политика: Администраторы видят только свои штрафы
 CREATE POLICY "Users can view own fines"
   ON fines FOR SELECT
