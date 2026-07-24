@@ -42,7 +42,7 @@ export default async function AdminLayout({
     )
   }
 
-  const role = userData.role
+  const role = userData.role as string
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">

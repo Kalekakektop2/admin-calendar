@@ -14,11 +14,33 @@ export default async function ManagerLayout({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Не авторизован</h2>
+          <p className="text-gray-600 dark:text-gray-400">Пожалуйста, войдите в систему</p>
+        </div>
+      </div>
+    )
+  }
+  
   const { data: userData } = await supabase
     .from('users')
     .select('full_name')
-    .eq('id', user?.id)
+    .eq('id', user.id)
     .single()
+
+  if (!userData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Пользователь не найден</h2>
+          <p className="text-gray-600 dark:text-gray-400">Обратитесь к администратору</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -35,7 +57,7 @@ export default async function ManagerLayout({
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-900 dark:text-gray-100">
-                {userData?.full_name}
+                {userData.full_name}
               </span>
               <ThemeToggle />
               <Link
