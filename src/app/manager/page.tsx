@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths } from 'date-fns'
 import { ru } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, DollarSign, CreditCard, Wallet, TrendingUp, Users, Image as ImageIcon, Plus, BarChart3 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, DollarSign, CreditCard, Wallet, TrendingUp, Users, Image as ImageIcon, Plus, BarChart3, Trash2 } from 'lucide-react'
 import { StatCard } from '@/components/ui/stat-card'
 import { Modal } from '@/components/ui/modal'
 import { formatCurrency } from '@/lib/utils'
@@ -245,6 +245,13 @@ export default function ManagerPage() {
           >
             <Plus className="w-5 h-5" />
             Создать администратора
+          </button>
+          <button
+            onClick={() => router.push('/manager/delete-admin')}
+            className="w-full sm:w-auto bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+          >
+            <Trash2 className="w-5 h-5" />
+            Удалить администратора
           </button>
         </div>
       </div>

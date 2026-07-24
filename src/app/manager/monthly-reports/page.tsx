@@ -7,6 +7,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMont
 import { ru } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, DollarSign, Wallet, TrendingUp, Users } from 'lucide-react'
 import { StatCard } from '@/components/ui/stat-card'
+import { Modal } from '@/components/ui/modal'
 import { formatCurrency } from '@/lib/utils'
 
 interface AdminStats {
@@ -19,15 +20,27 @@ interface AdminStats {
   shiftCount: number
   dayShifts: number
   nightShifts: number
+  shifts?: Shift[]
+}
+
+interface Shift {
+  id: string
+  shift_date: string
+  total_revenue: number
+  cash_balance: number
+  bonus_amount: number
+  shift_type: 'day' | 'night'
 }
 
 export default function MonthlyReportsPage() {
   const router = useRouter()
   const supabase = createClient()
-  
+
   const [currentDate, setCurrentDate] = useState(new Date())
   const [adminStats, setAdminStats] = useState<AdminStats[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedAdmin, setSelectedAdmin] = useState<AdminStats | null>(null)
+  const [shiftTypeFilter, setShiftTypeFilter] = useState<'all' | 'day' | 'night'>('all')
 
   useEffect(() => {
     loadAdminStats()
@@ -51,7 +64,7 @@ export default function MonthlyReportsPage() {
         admins.map(async (admin) => {
           const { data: shifts, error: shiftsError } = await supabase
             .from('shifts')
-            .select('total_revenue, cash_balance, bonus_amount, shift_type, shift_date')
+            .select('id, total_revenue, cash_balance, bonus_amount, shift_type, shift_date')
             .eq('user_id', admin.id)
             .gte('shift_date', startDate.toISOString().split('T')[0])
             .lte('shift_date', endDate.toISOString().split('T')[0])
@@ -87,6 +100,7 @@ export default function MonthlyReportsPage() {
             shiftCount,
             dayShifts,
             nightShifts,
+            shifts: filteredShifts,
           }
         })
       )
@@ -101,6 +115,17 @@ export default function MonthlyReportsPage() {
 
   const previousMonth = () => setCurrentDate(subMonths(currentDate, 1))
   const nextMonth = () => setCurrentDate(addMonths(currentDate, 1))
+
+  const handleAdminClick = (admin: AdminStats, type: 'all' | 'day' | 'night') => {
+    setSelectedAdmin(admin)
+    setShiftTypeFilter(type)
+  }
+
+  const getFilteredShifts = () => {
+    if (!selectedAdmin || !selectedAdmin.shifts) return []
+    if (shiftTypeFilter === 'all') return selectedAdmin.shifts
+    return selectedAdmin.shifts.filter(shift => shift.shift_type === shiftTypeFilter)
+  }
 
   // Общая статистика по всем администраторам
   const totalStats = adminStats.reduce((acc, admin) => ({
@@ -219,14 +244,29 @@ export default function MonthlyReportsPage() {
                       <div className="text-sm text-gray-500 dark:text-gray-400">{admin.email}</div>
                     </div>
                   </td>
-                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {admin.dayShifts}
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm">
+                    <button
+                      onClick={() => handleAdminClick(admin, 'day')}
+                      className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 font-medium cursor-pointer"
+                    >
+                      {admin.dayShifts}
+                    </button>
                   </td>
-                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {admin.nightShifts}
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm">
+                    <button
+                      onClick={() => handleAdminClick(admin, 'night')}
+                      className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 font-medium cursor-pointer"
+                    >
+                      {admin.nightShifts}
+                    </button>
                   </td>
-                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {admin.shiftCount}
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm">
+                    <button
+                      onClick={() => handleAdminClick(admin, 'all')}
+                      className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 font-medium cursor-pointer"
+                    >
+                      {admin.shiftCount}
+                    </button>
                   </td>
                   <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {formatCurrency(admin.totalRevenue)}
@@ -250,6 +290,87 @@ export default function MonthlyReportsPage() {
           </div>
         )}
       </div>
+
+      {/* Модальное окно с детальной статистикой */}
+      {selectedAdmin && (
+        <Modal
+          isOpen={!!selectedAdmin}
+          onClose={() => setSelectedAdmin(null)}
+          title={`Смены: ${selectedAdmin.full_name} (${shiftTypeFilter === 'all' ? 'Все' : shiftTypeFilter === 'day' ? 'Дневные' : 'Ночные'})`}
+        >
+          <div className="space-y-4">
+            {getFilteredShifts().length === 0 ? (
+              <div className="text-center py-8 text-gray-900 dark:text-gray-100">
+                <p>Нет смен выбранного типа</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {getFilteredShifts().map((shift) => {
+                  const displayDate = shift.shift_type === 'night'
+                    ? new Date(new Date(shift.shift_date).setDate(new Date(shift.shift_date).getDate() - 1))
+                    : new Date(shift.shift_date)
+
+                  return (
+                    <div key={shift.id} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <p className="font-semibold text-gray-900 dark:text-gray-100">
+                            {format(displayDate, 'dd MMM yyyy', { locale: ru })}
+                          </p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {shift.shift_type === 'day' ? 'Дневная смена' : 'Ночная смена'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-gray-600 dark:text-gray-400">Премия</p>
+                          <p className="font-bold text-green-600 dark:text-green-400">
+                            {formatCurrency(shift.bonus_amount)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 mt-3">
+                        <div>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">Выручка</p>
+                          <p className="font-semibold text-gray-900 dark:text-gray-100">
+                            {formatCurrency(shift.total_revenue)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">Наличные</p>
+                          <p className="font-semibold text-gray-900 dark:text-gray-100">
+                            {formatCurrency(shift.cash_balance)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            <div className="flex justify-between pt-4 border-t dark:border-gray-700">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Всего смен</p>
+                <p className="font-bold text-gray-900 dark:text-gray-100">
+                  {getFilteredShifts().length}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Общая выручка</p>
+                <p className="font-bold text-gray-900 dark:text-gray-100">
+                  {formatCurrency(getFilteredShifts().reduce((sum, shift) => sum + shift.total_revenue, 0))}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Общая премия</p>
+                <p className="font-bold text-green-600 dark:text-green-400">
+                  {formatCurrency(getFilteredShifts().reduce((sum, shift) => sum + shift.bonus_amount, 0))}
+                </p>
+              </div>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
