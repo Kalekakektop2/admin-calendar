@@ -42,6 +42,8 @@ export default async function AdminLayout({
     )
   }
 
+  const role = userData.role
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <nav className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
@@ -52,11 +54,11 @@ export default async function AdminLayout({
                 Админский календарь
               </h1>
               <span className={`ml-4 px-2 py-1 text-xs font-medium rounded ${
-                userData.role === 'manager' 
+                role === 'manager' 
                   ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' 
                   : 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-100'
               }`}>
-                {userData.role === 'manager' ? 'Руководитель' : 'Администратор'}
+                {role === 'manager' ? 'Руководитель' : 'Администратор'}
               </span>
             </div>
             <div className="flex items-center space-x-4">
