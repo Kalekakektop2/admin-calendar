@@ -298,34 +298,53 @@ export default function AdminPage() {
         encashment: parseFloat(formData.encashment) || 0
       })
       
-      const { data: shift, error: shiftError } = await supabase
+      // Сначала пробуем с полем encashment
+      let insertData: any = {
+        user_id: userId,
+        shift_date: shiftDate,
+        total_revenue: totalRevenue,
+        cash_balance: cashBalance,
+        card_revenue: 0, // Устанавливаем 0 по умолчанию
+        shift_type: formData.shift_type,
+        bonus_amount: calculatedBonus,
+        notes: formData.notes || null,
+        encashment: parseFloat(formData.encashment) || 0,
+      }
+      
+      let shift
+      let shiftError
+      
+      const { data: initialShift, error: initialError } = await supabase
         .from('shifts')
-        .insert({
-          user_id: userId,
-          shift_date: shiftDate,
-          total_revenue: totalRevenue,
-          cash_balance: cashBalance,
-          card_revenue: 0, // Устанавливаем 0 по умолчанию
-          shift_type: formData.shift_type,
-          bonus_amount: calculatedBonus,
-          notes: formData.notes || null,
-          encashment: parseFloat(formData.encashment) || 0,
-        })
+        .insert(insertData)
         .select()
         .single()
 
-      if (shiftError) {
-        console.error('Shift insertion error:', shiftError)
-        throw new Error(`Ошибка при создании смены: ${shiftError.message}`)
+      if (initialError) {
+        console.error('Shift insertion error:', initialError)
+        // Если ошибка из-за отсутствия поля encashment, пробуем без него
+        if (initialError.message.includes('encashment') || initialError.code === '42703') {
+          console.log('Ошибка с полем encashment, пробуем без него')
+          delete insertData.encashment
+          const { error: retryError, data: retryShift } = await supabase.from('shifts').insert(insertData).select().single()
+          if (retryError) throw retryError
+          shift = retryShift
+          console.log('Смена создана без encashment:', retryShift)
+          console.log('Премия в созданной смене:', retryShift.bonus_amount)
+          console.log('Премия должна была быть:', calculatedBonus)
+        } else {
+          throw new Error(`Ошибка при создании смены: ${initialError.message}`)
+        }
+      } else {
+        shift = initialShift
+        console.log('Смена создана:', shift)
+        console.log('Премия в созданной смене:', shift.bonus_amount)
+        console.log('Премия должна была быть:', calculatedBonus)
       }
 
       if (!shift) {
         throw new Error('Не удалось создать смену')
       }
-
-      console.log('Смена создана:', shift)
-      console.log('Премия в созданной смене:', shift.bonus_amount)
-      console.log('Премия должна была быть:', calculatedBonus)
 
       // Upload photos
       for (const photo of photos) {
