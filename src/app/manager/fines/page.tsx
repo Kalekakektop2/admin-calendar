@@ -50,10 +50,20 @@ export default function FinesPage() {
         .select('*, users(full_name)')
         .order('date', { ascending: false })
 
-      if (error) throw error
-      setFines(data || [])
+      if (error) {
+        console.error('Error loading fines:', error)
+        // Если таблица не существует, просто пустой массив
+        if (error.code === '42P01') {
+          setFines([])
+        } else {
+          throw error
+        }
+      } else {
+        setFines(data || [])
+      }
     } catch (error) {
       console.error('Error loading fines:', error)
+      setFines([])
     } finally {
       setLoading(false)
     }
@@ -97,7 +107,14 @@ export default function FinesPage() {
           comment: formData.comment || null,
         })
 
-      if (error) throw error
+      if (error) {
+        console.error('Error adding fine:', error)
+        if (error.code === '42P01') {
+          alert('Таблица штрафов не существует. Пожалуйста, примените миграцию 004_fines.sql в Supabase.')
+        } else {
+          throw error
+        }
+      }
 
       // Reset form
       setFormData({

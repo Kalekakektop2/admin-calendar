@@ -194,7 +194,12 @@ export default function AdminPage() {
 
       if (error) {
         console.error('Error loading fines:', error)
-        setFines([])
+        // Если таблица не существует, просто пустой массив
+        if (error.code === '42P01') {
+          setFines([])
+        } else {
+          setFines([])
+        }
       } else {
         setFines(data || [])
       }
@@ -308,6 +313,8 @@ export default function AdminPage() {
       if (!shift) {
         throw new Error('Не удалось создать смену')
       }
+
+      console.log('Смена создана:', shift)
 
       // Upload photos
       for (const photo of photos) {
