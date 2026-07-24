@@ -8,19 +8,16 @@ CREATE TABLE IF NOT EXISTS fines (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );
 
--- Добавляем поле date если его нет (для совместимости)
+-- Если колонка date существует, удаляем её (она больше не нужна)
 DO $$
 BEGIN
-  IF NOT EXISTS (
+  IF EXISTS (
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'fines' AND column_name = 'date'
   ) THEN
-    ALTER TABLE fines ADD COLUMN date DATE;
+    ALTER TABLE fines DROP COLUMN date;
   END IF;
 END $$;
-
--- Убедимся что поле date имеет правильное значение по умолчанию
-ALTER TABLE fines ALTER COLUMN date SET DEFAULT fine_date;
 
 -- Включаем RLS
 ALTER TABLE fines ENABLE ROW LEVEL SECURITY;

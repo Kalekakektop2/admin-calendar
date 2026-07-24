@@ -13,7 +13,6 @@ interface Fine {
   user_id: string
   amount: number
   fine_date: string
-  date: string
   comment: string | null
   created_at: string
   users: {

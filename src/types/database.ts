@@ -149,7 +149,6 @@ export interface Database {
           user_id: string
           amount: number
           fine_date: string
-          date: string
           comment: string | null
           created_at: string
         }
@@ -158,7 +157,6 @@ export interface Database {
           user_id: string
           amount: number
           fine_date: string
-          date?: string
           comment?: string | null
           created_at?: string
         }
@@ -167,7 +165,6 @@ export interface Database {
           user_id?: string
           amount?: number
           fine_date?: string
-          date?: string
           comment?: string | null
           created_at?: string
         }
