@@ -43,6 +43,7 @@ interface DashboardStats {
   totalBonus: number
   shiftCount: number
   photoCount: number
+  currentCash: number
 }
 
 export default function ManagerPage() {
@@ -62,6 +63,7 @@ export default function ManagerPage() {
     totalBonus: 0,
     shiftCount: 0,
     photoCount: 0,
+    currentCash: 0,
   })
 
   useEffect(() => {
@@ -151,6 +153,10 @@ export default function ManagerPage() {
       const dayShifts = filteredShifts.filter(shift => shift.shift_type === 'day').length || 0
       const nightShifts = filteredShifts.filter(shift => shift.shift_type === 'night').length || 0
       const totalBonus = filteredShifts.reduce((sum, shift) => sum + shift.bonus_amount, 0) || 0
+      
+      // Сейчас в кассе = общее количество из "Наличные за смену" - инкассация
+      const totalEncashment = filteredShifts.reduce((sum, shift) => sum + (shift.encashment || 0), 0) || 0
+      const currentCash = totalCash - totalEncashment
 
       setStats({
         totalRevenue,
@@ -160,6 +166,7 @@ export default function ManagerPage() {
         totalBonus,
         shiftCount: filteredShifts.length || 0,
         photoCount: photoCount || 0,
+        currentCash,
       })
     } catch (error) {
       console.error('Error loading stats:', error)
@@ -271,8 +278,13 @@ export default function ManagerPage() {
           icon={DollarSign}
         />
         <StatCard
-          title="Наличные"
+          title="Наличные за смену"
           value={formatCurrency(stats.totalCash)}
+          icon={Wallet}
+        />
+        <StatCard
+          title="Сейчас в кассе"
+          value={formatCurrency(stats.currentCash)}
           icon={Wallet}
         />
         <StatCard

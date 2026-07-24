@@ -52,6 +52,7 @@ export interface Database {
           bonus_amount: number
           shift_type: ShiftType
           notes: string | null
+          encashment: number
           created_at: string
           updated_at: string
         }
@@ -65,6 +66,7 @@ export interface Database {
           bonus_amount?: number
           shift_type?: ShiftType
           notes?: string | null
+          encashment?: number
           created_at?: string
           updated_at?: string
         }
@@ -78,6 +80,7 @@ export interface Database {
           bonus_amount?: number
           shift_type?: ShiftType
           notes?: string | null
+          encashment?: number
           created_at?: string
           updated_at?: string
         }

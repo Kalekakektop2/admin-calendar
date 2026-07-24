@@ -56,6 +56,7 @@ export default function AdminPage() {
     totalBonus: 0,
     shiftEarnings: 0,
     estimatedEarnings: 0,
+    currentCash: 0,
   })
   
   // Form state
@@ -66,6 +67,7 @@ export default function AdminPage() {
     shift_type: 'day' as 'day' | 'night',
     user_id: '', // Для выбора администратора
     notes: '',
+    encashment: '',
   })
   const [photos, setPhotos] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
@@ -121,12 +123,17 @@ export default function AdminPage() {
       // Примерный заработок = заработок за смены + премия - штрафы
       const estimatedEarnings = shiftEarnings + totalBonus - monthlyFines
       
+      // Сейчас в кассе = общее количество из "Наличные за смену" - инкассация
+      const totalEncashment = data?.reduce((sum, shift) => sum + (shift.encashment || 0), 0) || 0
+      const currentCash = totalCash - totalEncashment
+      
       setStats({
         totalRevenue,
         totalCash,
         totalBonus,
         shiftEarnings,
         estimatedEarnings,
+        currentCash,
       })
     } catch (error) {
       console.error('Error loading shifts:', error)
@@ -287,7 +294,8 @@ export default function AdminPage() {
         cash_balance: cashBalance,
         shift_type: formData.shift_type,
         bonus_amount: calculatedBonus,
-        notes: formData.notes
+        notes: formData.notes,
+        encashment: parseFloat(formData.encashment) || 0
       })
       
       const { data: shift, error: shiftError } = await supabase
@@ -301,6 +309,7 @@ export default function AdminPage() {
           shift_type: formData.shift_type,
           bonus_amount: calculatedBonus,
           notes: formData.notes || null,
+          encashment: parseFloat(formData.encashment) || 0,
         })
         .select()
         .single()
@@ -354,6 +363,7 @@ export default function AdminPage() {
         shift_type: 'day',
         user_id: '',
         notes: '',
+        encashment: '',
       })
       setPhotos([])
       setShowForm(false)
@@ -373,8 +383,8 @@ export default function AdminPage() {
 
   const calculateBonus = () => {
     const revenue = parseFloat(formData.total_revenue) || 0
-    // Расчет бонуса: 5% от выручки
-    const bonus = revenue * 0.05
+    // Расчет бонуса: 15% от выручки
+    const bonus = revenue * 0.15
     return parseFloat(bonus.toFixed(2))
   }
 
@@ -410,15 +420,20 @@ export default function AdminPage() {
       </div>
 
       {/* Статистика */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           title="Общая выручка"
           value={formatCurrency(stats.totalRevenue)}
           icon={DollarSign}
         />
         <StatCard
-          title="Наличные"
+          title="Наличные за смену"
           value={formatCurrency(stats.totalCash)}
+          icon={Wallet}
+        />
+        <StatCard
+          title="Сейчас в кассе"
+          value={formatCurrency(stats.currentCash)}
           icon={Wallet}
         />
         <StatCard
@@ -533,6 +548,23 @@ export default function AdminPage() {
                     required
                     value={formData.cash_balance}
                     onChange={(e) => setFormData({...formData, cash_balance: e.target.value})}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+                  Инкассация
+                </label>
+                <div className="relative">
+                  <Wallet className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.encashment}
+                    onChange={(e) => setFormData({...formData, encashment: e.target.value})}
                     className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700"
                   />
                 </div>

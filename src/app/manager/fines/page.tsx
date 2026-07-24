@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
-import { AlertTriangle, Plus, Trash2 } from 'lucide-react'
+import { AlertTriangle, Plus, Trash2, ArrowLeft } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 
 interface Fine {
@@ -25,6 +26,7 @@ interface Admin {
 }
 
 export default function FinesPage() {
+  const router = useRouter()
   const supabase = createClient()
   const [fines, setFines] = useState<Fine[]>([])
   const [admins, setAdmins] = useState<Admin[]>([])
@@ -98,6 +100,13 @@ export default function FinesPage() {
         return
       }
 
+      console.log('Попытка добавить штраф:', {
+        user_id: formData.user_id,
+        amount: amount,
+        date: formData.date,
+        comment: formData.comment
+      })
+
       const { error } = await supabase
         .from('fines')
         .insert({
@@ -109,11 +118,21 @@ export default function FinesPage() {
 
       if (error) {
         console.error('Error adding fine:', error)
+        console.error('Error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        })
+        
         if (error.code === '42P01') {
           alert('Таблица штрафов не существует. Пожалуйста, примените миграцию 004_fines.sql в Supabase.')
+        } else if (error.code === '42501') {
+          alert('Ошибка прав доступа. Убедитесь, что миграция применена корректно.')
         } else {
-          throw error
+          alert(`Ошибка при добавлении штрафа: ${error.message} (Код: ${error.code})`)
         }
+        return
       }
 
       // Reset form
@@ -165,10 +184,18 @@ export default function FinesPage() {
   return (
     <div className="space-y-6 px-2 sm:px-0">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-          <AlertTriangle className="w-6 h-6 text-orange-600" />
-          Управление штрафами
-        </h2>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => router.push('/manager')}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-900 dark:text-gray-100"
+          >
+            <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-gray-100" />
+          </button>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <AlertTriangle className="w-6 h-6 text-orange-600" />
+            Управление штрафами
+          </h2>
+        </div>
         <button
           onClick={() => setShowForm(!showForm)}
           className="w-full sm:w-auto bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-2"
