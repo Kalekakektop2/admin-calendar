@@ -324,6 +324,8 @@ export default function AdminPage() {
       }
 
       console.log('Смена создана:', shift)
+      console.log('Премия в созданной смене:', shift.bonus_amount)
+      console.log('Премия должна была быть:', calculatedBonus)
 
       // Upload photos
       for (const photo of photos) {
@@ -385,6 +387,12 @@ export default function AdminPage() {
     const revenue = parseFloat(formData.total_revenue) || 0
     // Расчет бонуса: 15% от выручки
     const bonus = revenue * 0.15
+    console.log('Расчет премии:', {
+      revenue: revenue,
+      percentage: 0.15,
+      calculatedBonus: bonus,
+      finalBonus: parseFloat(bonus.toFixed(2))
+    })
     return parseFloat(bonus.toFixed(2))
   }
 
