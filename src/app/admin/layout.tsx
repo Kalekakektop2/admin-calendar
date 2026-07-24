@@ -31,6 +31,17 @@ export default async function AdminLayout({
     .eq('id', user.id)
     .single()
 
+  if (!userData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Пользователь не найден</h2>
+          <p className="text-gray-600 dark:text-gray-400">Обратитесь к администратору</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <nav className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
