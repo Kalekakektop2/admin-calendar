@@ -392,6 +392,15 @@ export default function AdminPage() {
         throw new Error('Пожалуйста, введите корректные числовые значения')
       }
 
+      const parseMoney = (value: string) => {
+        if (value === '' || value == null) return 0
+        const n = parseFloat(value)
+        return Number.isFinite(n) ? n : 0
+      }
+
+      const advanceAmount = parseMoney(formData.advance)
+      const encashmentAmount = parseMoney(formData.encashment)
+
       // Создаём смену с автоопределёнными значениями
       let insertData: any = {
         user_id: userId,
@@ -402,15 +411,14 @@ export default function AdminPage() {
         shift_type: autoType,
         bonus_amount: calculatedBonus,
         notes: formData.notes || null,
-        encashment: formData.encashment ? parseFloat(formData.encashment) : null,
-        advance: formData.advance ? parseFloat(formData.advance) : null,
+        encashment: encashmentAmount,
+        advance: advanceAmount,
         meal_allowance: 100, // ЖЁСТКО фиксировано 100 рублей
       }
       
       let shift
-      let shiftError
       
-      console.log('Попытка вставки с клиентским расчетом премии:', calculatedBonus)
+      console.log('Попытка вставки смены, аванс:', advanceAmount, 'инкассация:', encashmentAmount)
       
       const { data: initialShift, error: initialError } = await supabase
         .from('shifts')
@@ -420,26 +428,85 @@ export default function AdminPage() {
 
       if (initialError) {
         console.error('Shift insertion error:', initialError)
-        // Если ошибка из-за отсутствия полей, пробуем без них
-        if (initialError.message.includes('encashment') || initialError.code === '42703' ||
-            initialError.message.includes('advance') || initialError.code === '42703' ||
-            initialError.message.includes('meal_allowance') || initialError.code === '42703') {
-          console.log('Ошибка с полями, пробуем без них')
-          delete insertData.encashment
-          delete insertData.advance
-          delete insertData.meal_allowance
-          const { error: retryError, data: retryShift } = await supabase.from('shifts').insert(insertData).select().single()
-          if (retryError) throw retryError
-          shift = retryShift
-          console.log('Смена создана без новых полей:', retryShift)
-          console.log('Премия в созданной смене:', retryShift.bonus_amount)
-          console.log('Премия должна была быть:', calculatedBonus)
+        const msg = (initialError.message || '').toLowerCase()
+        const isMissingColumn =
+          initialError.code === '42703' ||
+          initialError.code === 'PGRST204' ||
+          msg.includes('column') ||
+          msg.includes('schema cache')
+
+        if (isMissingColumn) {
+          // Удаляем только отсутствующие поля, НЕ все сразу
+          const retryData = { ...insertData }
+          if (msg.includes('encashment')) delete retryData.encashment
+          if (msg.includes('advance')) delete retryData.advance
+          if (msg.includes('meal_allowance')) delete retryData.meal_allowance
+
+          // Если сообщение общее — пробуем поля по одному
+          if (retryData.encashment === insertData.encashment &&
+              retryData.advance === insertData.advance &&
+              retryData.meal_allowance === insertData.meal_allowance) {
+            // Общая ошибка схемы: вставляем базовые поля, потом UPDATE опциональных
+            delete retryData.encashment
+            delete retryData.advance
+            delete retryData.meal_allowance
+            const { error: retryError, data: retryShift } = await supabase
+              .from('shifts')
+              .insert(retryData)
+              .select()
+              .single()
+            if (retryError) throw retryError
+            shift = retryShift
+
+            // Дописываем аванс / инкассацию / обед отдельным UPDATE
+            const { data: updated, error: updateError } = await supabase
+              .from('shifts')
+              .update({
+                advance: advanceAmount,
+                encashment: encashmentAmount,
+                meal_allowance: 100,
+              })
+              .eq('id', shift.id)
+              .select()
+              .single()
+
+            if (!updateError && updated) {
+              shift = updated
+            } else {
+              console.warn('Не удалось обновить аванс/инкассацию:', updateError)
+            }
+          } else {
+            const { error: retryError, data: retryShift } = await supabase
+              .from('shifts')
+              .insert(retryData)
+              .select()
+              .single()
+            if (retryError) throw retryError
+            shift = retryShift
+          }
         } else {
           throw new Error(`Ошибка при создании смены: ${initialError.message}`)
         }
       } else {
         shift = initialShift
-        console.log('Смена создана:', shift)
+        console.log('Смена создана:', shift, 'аванс в БД:', shift?.advance)
+
+        // Если аванс не сохранился (null/undefined) — принудительно обновляем
+        if (
+          (shift.advance == null || Number(shift.advance) !== advanceAmount) &&
+          advanceAmount !== 0
+        ) {
+          const { data: fixed, error: fixError } = await supabase
+            .from('shifts')
+            .update({ advance: advanceAmount })
+            .eq('id', shift.id)
+            .select()
+            .single()
+          if (!fixError && fixed) {
+            shift = fixed
+          }
+        }
+
         console.log('Премия в созданной смене:', shift.bonus_amount)
         console.log('Премия должна была быть:', calculatedBonus)
         
@@ -454,6 +521,26 @@ export default function AdminPage() {
 
       if (!shift) {
         throw new Error('Не удалось создать смену')
+      }
+
+      // Гарантированно сохраняем аванс, инкассацию и обед (на случай fallback-вставки)
+      {
+        const { data: ensured, error: ensureError } = await supabase
+          .from('shifts')
+          .update({
+            advance: advanceAmount,
+            encashment: encashmentAmount,
+            meal_allowance: 100,
+          })
+          .eq('id', shift.id)
+          .select()
+          .single()
+
+        if (!ensureError && ensured) {
+          shift = ensured
+        } else if (ensureError) {
+          console.warn('Не удалось дозаписать аванс/инкассацию/обед:', ensureError)
+        }
       }
 
       // Upload photos
