@@ -68,6 +68,7 @@ export default function AdminPage() {
     user_id: '', // Для выбора администратора
     notes: '',
     encashment: '',
+    advance: '',
   })
   const [photos, setPhotos] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
@@ -347,6 +348,7 @@ export default function AdminPage() {
         bonus_amount: calculatedBonus,
         notes: formData.notes || null,
         encashment: parseFloat(formData.encashment) || 0,
+        advance: parseFloat(formData.advance) || 0,
       }
       
       let shift
@@ -362,14 +364,16 @@ export default function AdminPage() {
 
       if (initialError) {
         console.error('Shift insertion error:', initialError)
-        // Если ошибка из-за отсутствия поля encashment, пробуем без него
-        if (initialError.message.includes('encashment') || initialError.code === '42703') {
-          console.log('Ошибка с полем encashment, пробуем без него')
+        // Если ошибка из-за отсутствия поля encashment или advance, пробуем без них
+        if (initialError.message.includes('encashment') || initialError.code === '42703' ||
+            initialError.message.includes('advance') || initialError.code === '42703') {
+          console.log('Ошибка с полем encashment или advance, пробуем без них')
           delete insertData.encashment
+          delete insertData.advance
           const { error: retryError, data: retryShift } = await supabase.from('shifts').insert(insertData).select().single()
           if (retryError) throw retryError
           shift = retryShift
-          console.log('Смена создана без encashment:', retryShift)
+          console.log('Смена создана без encashment и advance:', retryShift)
           console.log('Премия в созданной смене:', retryShift.bonus_amount)
           console.log('Премия должна была быть:', calculatedBonus)
         } else {
@@ -433,6 +437,7 @@ export default function AdminPage() {
         user_id: '',
         notes: '',
         encashment: '',
+        advance: '',
       })
       setPhotos([])
       setShowForm(false)

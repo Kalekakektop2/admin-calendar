@@ -271,7 +271,7 @@ export default function ManagerPage() {
       </div>
 
       {/* Dashboard Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Общая выручка"
           value={formatCurrency(stats.totalRevenue)}
@@ -291,16 +291,6 @@ export default function ManagerPage() {
           title="Премии"
           value={formatCurrency(stats.totalBonus)}
           icon={TrendingUp}
-        />
-        <StatCard
-          title="Смены"
-          value={`День: ${stats.dayShifts}, Ночь: ${stats.nightShifts}`}
-          icon={Users}
-        />
-        <StatCard
-          title="Всего фотографий"
-          value={stats.photoCount}
-          icon={ImageIcon}
         />
       </div>
 
@@ -385,7 +375,7 @@ export default function ManagerPage() {
               <p className="text-sm text-gray-600 dark:text-gray-400">{selectedShift.users.email}</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
               <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
                 <p className="text-xs text-gray-600 dark:text-gray-400">Выручка</p>
                 <p className="font-bold text-gray-900 dark:text-white">{formatCurrency(selectedShift.total_revenue)}</p>
@@ -397,6 +387,10 @@ export default function ManagerPage() {
               <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
                 <p className="text-xs text-gray-600 dark:text-gray-400">Наличные</p>
                 <p className="font-bold text-gray-900 dark:text-white">{formatCurrency(selectedShift.cash_balance)}</p>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
+                <p className="text-xs text-gray-600 dark:text-gray-400">Инкассация</p>
+                <p className="font-bold text-red-600 dark:text-red-400">{formatCurrency(selectedShift.encashment || 0)}</p>
               </div>
               <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
                 <p className="text-xs text-gray-600 dark:text-gray-400">Тип смены</p>
