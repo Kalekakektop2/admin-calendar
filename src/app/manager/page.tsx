@@ -491,7 +491,7 @@ export default function ManagerPage() {
                 Премия
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
-                Фото
+                Аванс
               </th>
             </tr>
           </thead>
@@ -519,17 +519,8 @@ export default function ManagerPage() {
                   <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-green-600 dark:text-green-400 font-medium">
                     {formatCurrency(shift.bonus_amount)}
                   </td>
-                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    <button
-                      onClick={() => {
-                        setSelectedShift(shift)
-                        setSelectedDate(displayDate)
-                        loadShiftPhotos(shift.id)
-                      }}
-                      className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300"
-                    >
-                      Посмотреть
-                    </button>
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-orange-600 dark:text-orange-400 font-medium">
+                    {formatCurrency(shift.advance ?? 0)}
                   </td>
                 </tr>
               )

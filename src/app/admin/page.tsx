@@ -57,6 +57,7 @@ export default function AdminPage() {
     totalRevenue: 0,
     totalCash: 0,
     totalBonus: 0,
+    periodBonus: 0,
     shiftEarnings: 0,
     estimatedEarnings: 0,
     currentCash: 0,
@@ -178,6 +179,7 @@ export default function AdminPage() {
         totalRevenue,
         totalCash,
         totalBonus,
+        periodBonus,
         shiftEarnings,
         estimatedEarnings,
         currentCash,
@@ -536,9 +538,9 @@ export default function AdminPage() {
           icon={DollarSign}
         />
         <StatCard
-          title="Наличные за смену"
-          value={formatCurrency(stats.totalCash)}
-          icon={Wallet}
+          title="Премия"
+          value={formatCurrency(stats.periodBonus)}
+          icon={TrendingUp}
         />
         <StatCard
           title="Сейчас в кассе"
@@ -832,6 +834,9 @@ export default function AdminPage() {
                   Премия
                 </th>
                 <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                  Аванс
+                </th>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
                   Действия
                 </th>
               </tr>
@@ -859,6 +864,9 @@ export default function AdminPage() {
                   </td>
                   <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-green-600 dark:text-green-400 font-medium">
                     {formatCurrency(shift.bonus_amount)}
+                  </td>
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-orange-600 dark:text-orange-400 font-medium">
+                    {formatCurrency(shift.advance ?? 0)}
                   </td>
                   <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     <button

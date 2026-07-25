@@ -17,6 +17,7 @@ interface AdminStats {
   totalCash: number
   totalRevenue: number
   totalBonus: number
+  totalAdvance: number
   shiftCount: number
   dayShifts: number
   nightShifts: number
@@ -44,15 +45,26 @@ export default function MonthlyReportsPage() {
   const [loading, setLoading] = useState(true)
   const [selectedAdmin, setSelectedAdmin] = useState<AdminStats | null>(null)
   const [shiftTypeFilter, setShiftTypeFilter] = useState<'all' | 'day' | 'night'>('all')
+  const [periodFilter, setPeriodFilter] = useState<'full' | 'first' | 'second'>('full')
 
   useEffect(() => {
     loadAdminStats()
-  }, [currentDate])
+  }, [currentDate, periodFilter])
 
   const loadAdminStats = async () => {
     try {
-      const startDate = startOfMonth(currentDate)
-      const endDate = endOfMonth(currentDate)
+      let startDate, endDate
+      
+      if (periodFilter === 'full') {
+        startDate = startOfMonth(currentDate)
+        endDate = endOfMonth(currentDate)
+      } else if (periodFilter === 'first') {
+        startDate = startOfMonth(currentDate)
+        endDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 15)
+      } else {
+        startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 16)
+        endDate = endOfMonth(currentDate)
+      }
 
       // Получаем всех администраторов
       const { data: admins, error: adminsError } = await supabase
@@ -89,6 +101,7 @@ export default function MonthlyReportsPage() {
           const totalRevenue = filteredShifts.reduce((sum, shift) => sum + shift.total_revenue, 0) ?? 0
           const totalCash = filteredShifts.reduce((sum, shift) => sum + shift.cash_balance, 0) ?? 0
           const totalBonus = filteredShifts.reduce((sum, shift) => sum + shift.bonus_amount, 0) ?? 0
+          const totalAdvance = filteredShifts.reduce((sum, shift) => sum + (shift.advance ?? 0), 0) ?? 0
           const shiftCount = filteredShifts.length ?? 0
           const dayShifts = filteredShifts.filter(shift => shift.shift_type === 'day').length ?? 0
           const nightShifts = filteredShifts.filter(shift => shift.shift_type === 'night').length ?? 0
@@ -100,6 +113,7 @@ export default function MonthlyReportsPage() {
             totalCash,
             totalRevenue,
             totalBonus,
+            totalAdvance,
             shiftCount,
             dayShifts,
             nightShifts,
@@ -135,8 +149,9 @@ export default function MonthlyReportsPage() {
     totalCash: acc.totalCash + admin.totalCash,
     totalRevenue: acc.totalRevenue + admin.totalRevenue,
     totalBonus: acc.totalBonus + admin.totalBonus,
+    totalAdvance: acc.totalAdvance + admin.totalAdvance,
     shiftCount: acc.shiftCount + admin.shiftCount,
-  }), { totalCash: 0, totalRevenue: 0, totalBonus: 0, shiftCount: 0 })
+  }), { totalCash: 0, totalRevenue: 0, totalBonus: 0, totalAdvance: 0, shiftCount: 0 })
 
   if (loading) {
     return (
@@ -192,8 +207,44 @@ export default function MonthlyReportsPage() {
         </div>
       </div>
 
+      {/* Переключатель периодов */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setPeriodFilter('full')}
+            className={`px-4 py-2 rounded-lg transition-colors ${
+              periodFilter === 'full'
+                ? 'bg-green-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
+          >
+            Весь месяц
+          </button>
+          <button
+            onClick={() => setPeriodFilter('first')}
+            className={`px-4 py-2 rounded-lg transition-colors ${
+              periodFilter === 'first'
+                ? 'bg-green-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
+          >
+            С 1 по 16
+          </button>
+          <button
+            onClick={() => setPeriodFilter('second')}
+            className={`px-4 py-2 rounded-lg transition-colors ${
+              periodFilter === 'second'
+                ? 'bg-green-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
+          >
+            С 16 по 1
+          </button>
+        </div>
+      </div>
+
       {/* Общая статистика */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Общая выручка"
           value={formatCurrency(totalStats.totalRevenue)}
@@ -208,6 +259,11 @@ export default function MonthlyReportsPage() {
           title="Премии"
           value={formatCurrency(totalStats.totalBonus)}
           icon={TrendingUp}
+        />
+        <StatCard
+          title="Авансы"
+          value={formatCurrency(totalStats.totalAdvance)}
+          icon={Wallet}
         />
       </div>
 
@@ -240,6 +296,9 @@ export default function MonthlyReportsPage() {
                 </th>
                 <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
                   Премия
+                </th>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                  Аванс
                 </th>
               </tr>
             </thead>
@@ -284,6 +343,9 @@ export default function MonthlyReportsPage() {
                   </td>
                   <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-green-600 dark:text-green-400 font-medium">
                     {formatCurrency(admin.totalBonus)}
+                  </td>
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-orange-600 dark:text-orange-400 font-medium">
+                    {formatCurrency(admin.totalAdvance)}
                   </td>
                 </tr>
               ))}
