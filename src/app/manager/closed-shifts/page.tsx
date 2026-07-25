@@ -43,6 +43,7 @@ export default function ClosedShiftsPage() {
   const [selectedShift, setSelectedShift] = useState<ClosedShift | null>(null)
   const [shiftPhotos, setShiftPhotos] = useState<ShiftPhoto[]>([])
   const [showPhotosModal, setShowPhotosModal] = useState(false)
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [admins, setAdmins] = useState<Array<{ id: string; full_name: string; color?: string }>>([])
   const [selectedAdminId, setSelectedAdminId] = useState<string>('all')
 
@@ -270,9 +271,19 @@ export default function ClosedShiftsPage() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div 
-                          className="w-3 h-3 rounded-full" 
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedShift(shift)
+                            setShowDetailsModal(true)
+                          }}
+                          className="text-xs px-2 py-1 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-200 hover:bg-indigo-200 dark:hover:bg-indigo-900 font-medium shrink-0"
+                        >
+                          Подробно
+                        </button>
+                        <div
+                          className="w-3 h-3 rounded-full shrink-0"
                           style={{ backgroundColor: shift.users?.color || '#3b82f6' }}
                         />
                         <span className="text-sm font-medium">{shift.users?.full_name}</span>
@@ -316,15 +327,135 @@ export default function ClosedShiftsPage() {
         )}
       </div>
 
+      {/* Модалка: полная статистика смены */}
+      <Modal
+        isOpen={showDetailsModal}
+        onClose={() => {
+          setShowDetailsModal(false)
+          if (!showPhotosModal) setSelectedShift(null)
+        }}
+        title={
+          selectedShift
+            ? `Смена — ${selectedShift.users?.full_name || 'Админ'} · ${(() => {
+                const [y, m, d] = selectedShift.shift_date.split('-').map(Number)
+                return format(new Date(y, m - 1, d), 'dd.MM.yyyy')
+              })()}`
+            : 'Подробности смены'
+        }
+      >
+        {selectedShift && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-4 h-4 rounded-full"
+                style={{ backgroundColor: selectedShift.users?.color || '#3b82f6' }}
+              />
+              <div>
+                <div className="font-semibold text-gray-900 dark:text-white">
+                  {selectedShift.users?.full_name}
+                </div>
+                <div className="text-sm text-gray-500 flex items-center gap-1">
+                  {selectedShift.shift_type === 'day' ? (
+                    <>
+                      <Sun className="w-3.5 h-3.5 text-yellow-500" /> День (09:00–21:00)
+                    </>
+                  ) : (
+                    <>
+                      <Moon className="w-3.5 h-3.5 text-indigo-500" /> Ночь (21:00–09:00)
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                <p className="text-xs text-gray-500">Выручка</p>
+                <p className="font-bold text-gray-900 dark:text-white">
+                  {formatCurrency(selectedShift.total_revenue)}
+                </p>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                <p className="text-xs text-gray-500">Наличные</p>
+                <p className="font-bold text-gray-900 dark:text-white">
+                  {formatCurrency(selectedShift.cash_balance)}
+                </p>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                <p className="text-xs text-gray-500">Карта</p>
+                <p className="font-bold text-gray-900 dark:text-white">
+                  {formatCurrency(selectedShift.card_revenue ?? 0)}
+                </p>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                <p className="text-xs text-gray-500">Премия</p>
+                <p className="font-bold text-green-600 dark:text-green-400">
+                  {formatCurrency(selectedShift.bonus_amount)}
+                </p>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                <p className="text-xs text-gray-500">Аванс</p>
+                <p className="font-bold text-orange-600 dark:text-orange-400">
+                  {formatCurrency(selectedShift.advance ?? 0)}
+                </p>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                <p className="text-xs text-gray-500">Инкассация</p>
+                <p className="font-bold text-red-600 dark:text-red-400">
+                  {formatCurrency(selectedShift.encashment ?? 0)}
+                </p>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                <p className="text-xs text-gray-500">Обед</p>
+                <p className="font-bold text-blue-600 dark:text-blue-400">
+                  {formatCurrency(selectedShift.meal_allowance ?? 100)}
+                </p>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                <p className="text-xs text-gray-500">Закрыта</p>
+                <p className="font-bold text-sm text-gray-900 dark:text-white">
+                  {selectedShift.created_at
+                    ? format(new Date(selectedShift.created_at), 'dd.MM.yyyy HH:mm')
+                    : '—'}
+                </p>
+              </div>
+            </div>
+
+            {selectedShift.notes && (
+              <div>
+                <h4 className="text-sm font-semibold mb-1 text-gray-900 dark:text-white">Примечания</h4>
+                <p className="text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                  {selectedShift.notes}
+                </p>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                loadShiftPhotos(selectedShift.id)
+              }}
+              className="w-full py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 flex items-center justify-center gap-2"
+            >
+              <ImageIcon className="w-4 h-4" />
+              Открыть фотографии
+            </button>
+          </div>
+        )}
+      </Modal>
+
       {/* Модалка с фотографиями */}
       <Modal
         isOpen={showPhotosModal}
         onClose={() => {
           setShowPhotosModal(false)
-          setSelectedShift(null)
+          if (!showDetailsModal) setSelectedShift(null)
           setShiftPhotos([])
         }}
-        title={`Фотографии — ${selectedShift ? format(new Date(selectedShift.shift_date), 'dd.MM.yyyy') : ''}`}
+        title={`Фотографии — ${selectedShift ? (() => {
+          const [y, m, d] = selectedShift.shift_date.split('-').map(Number)
+          return format(new Date(y, m - 1, d), 'dd.MM.yyyy')
+        })() : ''}`}
       >
         {shiftPhotos.length === 0 ? (
           <p className="text-gray-500">Фотографии отсутствуют</p>
@@ -333,9 +464,9 @@ export default function ClosedShiftsPage() {
             {shiftPhotos.map(photo => (
               <div key={photo.id} className="space-y-2">
                 <a href={photo.photo_url} target="_blank" rel="noopener noreferrer">
-                  <img 
-                    src={photo.photo_url} 
-                    alt={photo.description || 'Фото смены'} 
+                  <img
+                    src={photo.photo_url}
+                    alt={photo.description || 'Фото смены'}
                     className="w-full h-48 object-cover rounded-lg border dark:border-gray-700 hover:opacity-90 transition-opacity"
                   />
                 </a>

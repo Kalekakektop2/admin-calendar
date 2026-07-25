@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type MouseEvent } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isSameDay } from 'date-fns'
 import { ru } from 'date-fns/locale'
@@ -100,6 +100,11 @@ export default function ShiftCalendarPage() {
   }
 
   const handleDayClick = async (date: Date) => {
+    // В режиме редактирования цветов — только цвета, смены не ставим/не снимаем
+    if (editingMode) {
+      return
+    }
+
     if (!selectedAdmin) {
       alert('Выберите администратора')
       return
@@ -107,19 +112,21 @@ export default function ShiftCalendarPage() {
 
     const dateStr = format(date, 'yyyy-MM-dd')
     const existingShift = plannedShifts.find(
-      s => s.shift_date === dateStr && 
-           s.user_id === selectedAdmin.id && 
+      s => s.shift_date === dateStr &&
+           s.user_id === selectedAdmin.id &&
            s.shift_type === selectedShiftType
     )
 
     if (existingShift) {
-      // Удаляем существующую смену
-      if (confirm('Удалить эту запланированную смену?')) {
-        await supabase.from('planned_shifts').delete().eq('id', existingShift.id)
+      if (confirm(`Удалить смену «${selectedAdmin.full_name}» (${selectedShiftType === 'day' ? 'День' : 'Ночь'})?`)) {
+        const { error } = await supabase.from('planned_shifts').delete().eq('id', existingShift.id)
+        if (error) {
+          alert(`Ошибка удаления: ${error.message}`)
+          return
+        }
         await loadPlannedShifts()
       }
     } else {
-      // Создаём новую запланированную смену
       try {
         const { error } = await supabase.from('planned_shifts').insert({
           user_id: selectedAdmin.id,
@@ -131,7 +138,7 @@ export default function ShiftCalendarPage() {
           if (error.code === '23505') {
             alert('Эта смена уже запланирована')
           } else {
-            throw error
+            alert(`Ошибка при создании смены: ${error.message}`)
           }
         } else {
           await loadPlannedShifts()
@@ -143,8 +150,35 @@ export default function ShiftCalendarPage() {
     }
   }
 
+  /** Клик по конкретной смене в ячейке — удалить именно её */
+  const handleShiftChipClick = async (e: MouseEvent, shift: PlannedShift) => {
+    e.stopPropagation()
+    if (editingMode) return
+
+    if (!confirm(`Удалить смену «${shift.users?.full_name || 'админ'}» (${shift.shift_type === 'day' ? 'День' : 'Ночь'})?`)) {
+      return
+    }
+
+    const { error } = await supabase.from('planned_shifts').delete().eq('id', shift.id)
+    if (error) {
+      alert(`Ошибка удаления: ${error.message}`)
+      return
+    }
+    await loadPlannedShifts()
+    if (modalDate) {
+      setModalShifts(getShiftsForDate(modalDate).sort((a, b) => {
+        if (a.shift_type === b.shift_type) return 0
+        return a.shift_type === 'day' ? -1 : 1
+      }))
+    }
+  }
+
   const openDayModal = (date: Date) => {
-    const shifts = getShiftsForDate(date)
+    const shifts = getShiftsForDate(date).sort((a, b) => {
+      // День сверху, ночь снизу
+      if (a.shift_type === b.shift_type) return 0
+      return a.shift_type === 'day' ? -1 : 1
+    })
     setModalDate(date)
     setModalShifts(shifts)
     setShowModal(true)
@@ -154,12 +188,17 @@ export default function ShiftCalendarPage() {
     if (!confirm('Удалить запланированную смену?')) return
 
     try {
-      await supabase.from('planned_shifts').delete().eq('id', shiftId)
+      const { error } = await supabase.from('planned_shifts').delete().eq('id', shiftId)
+      if (error) {
+        alert(`Ошибка удаления: ${error.message}`)
+        return
+      }
       await loadPlannedShifts()
-      // Обновляем модалку
       if (modalDate) {
-        const shifts = getShiftsForDate(modalDate)
-        setModalShifts(shifts)
+        setModalShifts(getShiftsForDate(modalDate).sort((a, b) => {
+          if (a.shift_type === b.shift_type) return 0
+          return a.shift_type === 'day' ? -1 : 1
+        }))
       }
     } catch (error) {
       console.error('Error deleting planned shift:', error)
@@ -279,15 +318,16 @@ export default function ShiftCalendarPage() {
           </div>
 
           <button
+            type="button"
             onClick={() => setEditingMode(!editingMode)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-              editingMode 
-                ? 'bg-red-600 text-white' 
+              editingMode
+                ? 'bg-red-600 text-white'
                 : 'bg-blue-600 text-white hover:bg-blue-700'
             }`}
           >
             <Edit2 className="w-4 h-4" />
-            {editingMode ? 'Выход из режима редактирования' : 'Режим редактирования цветов'}
+            {editingMode ? 'Выход из режима цветов' : 'Редактировать цвета'}
           </button>
         </div>
 
@@ -344,9 +384,11 @@ export default function ShiftCalendarPage() {
                   e.preventDefault()
                   openDayModal(day)
                 }}
-                className={`min-h-[110px] p-2 border-r border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
-                  isToday ? 'bg-blue-50 dark:bg-blue-900/20' : ''
-                }`}
+                className={`min-h-[120px] p-2 border-r border-b border-gray-200 dark:border-gray-700 transition-colors ${
+                  editingMode
+                    ? 'cursor-default opacity-90'
+                    : 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700'
+                } ${isToday ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
               >
                 <div className="flex justify-between items-start mb-1">
                   <span className={`text-sm font-medium ${isToday ? 'text-blue-600 dark:text-blue-400' : ''}`}>
@@ -354,6 +396,7 @@ export default function ShiftCalendarPage() {
                   </span>
                   {(dayShifts.length > 0 || nightShifts.length > 0) && (
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation()
                         openDayModal(day)
@@ -365,45 +408,57 @@ export default function ShiftCalendarPage() {
                   )}
                 </div>
 
-                {/* Дневные смены */}
-                {dayShifts.length > 0 && (
-                  <div className="space-y-0.5 mb-1">
-                    {dayShifts.map(shift => (
-                      <div
-                        key={shift.id}
-                        className="text-[10px] px-1.5 py-0.5 rounded text-white truncate"
-                        style={{ backgroundColor: shift.users?.color || '#3b82f6' }}
-                        title={`${shift.users?.full_name} — День`}
-                      >
-                        {shift.users?.full_name}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {/* День всегда сверху */}
+                <div className="space-y-0.5 mb-1 min-h-[28px]">
+                  {dayShifts.map(shift => (
+                    <div
+                      key={shift.id}
+                      role="button"
+                      onClick={(e) => handleShiftChipClick(e, shift)}
+                      className="text-[10px] px-1.5 py-0.5 rounded text-white truncate flex items-center gap-0.5 hover:ring-1 hover:ring-white/80"
+                      style={{ backgroundColor: shift.users?.color || '#3b82f6' }}
+                      title={`${shift.users?.full_name} — День. Клик — удалить`}
+                    >
+                      <Sun className="w-2.5 h-2.5 shrink-0" />
+                      <span className="truncate">{shift.users?.full_name}</span>
+                    </div>
+                  ))}
+                </div>
 
-                {/* Ночные смены */}
-                {nightShifts.length > 0 && (
-                  <div className="space-y-0.5">
-                    {nightShifts.map(shift => (
-                      <div
-                        key={shift.id}
-                        className="text-[10px] px-1.5 py-0.5 rounded text-white truncate opacity-80"
-                        style={{ backgroundColor: shift.users?.color || '#3b82f6' }}
-                        title={`${shift.users?.full_name} — Ночь`}
-                      >
-                        🌙 {shift.users?.full_name}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {/* Ночь всегда снизу */}
+                <div className="space-y-0.5 border-t border-gray-100 dark:border-gray-600 pt-1 min-h-[28px]">
+                  {nightShifts.map(shift => (
+                    <div
+                      key={shift.id}
+                      role="button"
+                      onClick={(e) => handleShiftChipClick(e, shift)}
+                      className="text-[10px] px-1.5 py-0.5 rounded text-white truncate flex items-center gap-0.5 opacity-90 hover:ring-1 hover:ring-white/80"
+                      style={{ backgroundColor: shift.users?.color || '#3b82f6' }}
+                      title={`${shift.users?.full_name} — Ночь. Клик — удалить`}
+                    >
+                      <Moon className="w-2.5 h-2.5 shrink-0" />
+                      <span className="truncate">{shift.users?.full_name}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )
           })}
         </div>
       </div>
 
-      <div className="mt-4 text-xs text-gray-500 dark:text-gray-400">
-        ЛКМ — добавить/удалить смену выбранного админа. ПКМ — посмотреть все смены дня.
+      <div className="mt-4 text-xs text-gray-500 dark:text-gray-400 space-y-1">
+        {editingMode ? (
+          <p className="text-amber-600 dark:text-amber-400 font-medium">
+            Режим цветов: постановка и удаление смен отключены. Меняйте только цвета админов.
+          </p>
+        ) : (
+          <>
+            <p>ЛКМ по пустому дню — поставить смену выбранного админа (день/ночь).</p>
+            <p>ЛКМ по имени на смене — удалить именно эту смену. ПКМ / иконка — список дня.</p>
+            <p>В ячейке: <strong>день сверху</strong>, <strong>ночь снизу</strong>.</p>
+          </>
+        )}
       </div>
 
       {/* Модальное окно со списком смен на день */}
