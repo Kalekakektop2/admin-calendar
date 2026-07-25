@@ -1,5 +1,7 @@
 -- Админы должны видеть все запланированные смены (для вкладки «Мои смены» + фильтр)
 DROP POLICY IF EXISTS "Admins can view own planned_shifts" ON planned_shifts;
+DROP POLICY IF EXISTS "Staff can view all planned_shifts" ON planned_shifts;
+DROP POLICY IF EXISTS "Managers can view all planned_shifts" ON planned_shifts;
 
 CREATE POLICY "Staff can view all planned_shifts" ON planned_shifts
     FOR SELECT USING (
@@ -10,6 +12,8 @@ CREATE POLICY "Staff can view all planned_shifts" ON planned_shifts
     );
 
 -- Админы могут видеть профили других админов (имена/цвета в календаре)
+DROP POLICY IF EXISTS "Staff can view all users" ON users;
+
 CREATE POLICY "Staff can view all users" ON users
     FOR SELECT USING (
         EXISTS (
