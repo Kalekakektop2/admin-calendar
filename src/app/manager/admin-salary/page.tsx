@@ -70,7 +70,7 @@ export default function AdminSalaryPage() {
           // Получаем смены за период
           const { data: shifts, error: shiftsError } = await supabase
             .from('shifts')
-            .select('id, total_revenue, cash_balance, bonus_amount, shift_type, shift_date, advance')
+            .select('id, total_revenue, cash_balance, bonus_amount, shift_type, shift_date, advance, meal_allowance')
             .eq('user_id', admin.id)
             .gte('shift_date', startDate.toISOString().split('T')[0])
             .lte('shift_date', endDate.toISOString().split('T')[0])
@@ -100,8 +100,8 @@ export default function AdminSalaryPage() {
           // Премия
           const bonus = filteredShifts.reduce((sum, shift) => sum + shift.bonus_amount, 0)
           
-          // Обед (100₽ за каждую смену)
-          const mealAllowance = totalShifts * 100
+          // Обед (из базы данных)
+          const mealAllowance = filteredShifts.reduce((sum, shift) => sum + (shift.meal_allowance || 100), 0)
           
           // Авансы
           const advances = filteredShifts.reduce((sum, shift) => sum + (shift.advance || 0), 0)

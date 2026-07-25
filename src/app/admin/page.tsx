@@ -69,6 +69,7 @@ export default function AdminPage() {
     notes: '',
     encashment: '',
     advance: '',
+    meal_allowance: '100',
   })
   const [photos, setPhotos] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
@@ -148,8 +149,10 @@ export default function AdminPage() {
         return fineDate >= startDate && fineDate <= endDate
       }).reduce((sum, fine) => sum + fine.amount, 0)
       
-      // Примерный заработок за период = заработок за смены + премия - штрафы
-      const estimatedEarnings = shiftEarnings + periodBonus - periodFines
+      // Примерный заработок за период = заработок за смены + премия + обед - авансы - штрафы
+      const periodAdvances = periodShifts.reduce((sum, shift) => sum + (shift.advance || 0), 0)
+      const periodMealAllowance = periodShifts.reduce((sum, shift) => sum + (shift.meal_allowance || 100), 0)
+      const estimatedEarnings = shiftEarnings + periodBonus + periodMealAllowance - periodAdvances - periodFines
       
       // Сейчас в кассе = общее количество из "Наличные за смену" - инкассация (за все время)
       const totalEncashment = data?.reduce((sum, shift) => sum + (shift.encashment || 0), 0) || 0
@@ -162,6 +165,8 @@ export default function AdminPage() {
         periodShifts: periodShifts.length,
         shiftEarnings,
         periodBonus,
+        periodMealAllowance,
+        periodAdvances,
         periodFines,
         estimatedEarnings
       })
@@ -349,6 +354,7 @@ export default function AdminPage() {
         notes: formData.notes || null,
         encashment: parseFloat(formData.encashment) || 0,
         advance: parseFloat(formData.advance) || 0,
+        meal_allowance: parseFloat(formData.meal_allowance) || 100,
       }
       
       let shift
@@ -364,16 +370,18 @@ export default function AdminPage() {
 
       if (initialError) {
         console.error('Shift insertion error:', initialError)
-        // Если ошибка из-за отсутствия поля encashment или advance, пробуем без них
+        // Если ошибка из-за отсутствия полей, пробуем без них
         if (initialError.message.includes('encashment') || initialError.code === '42703' ||
-            initialError.message.includes('advance') || initialError.code === '42703') {
-          console.log('Ошибка с полем encashment или advance, пробуем без них')
+            initialError.message.includes('advance') || initialError.code === '42703' ||
+            initialError.message.includes('meal_allowance') || initialError.code === '42703') {
+          console.log('Ошибка с полями, пробуем без них')
           delete insertData.encashment
           delete insertData.advance
+          delete insertData.meal_allowance
           const { error: retryError, data: retryShift } = await supabase.from('shifts').insert(insertData).select().single()
           if (retryError) throw retryError
           shift = retryShift
-          console.log('Смена создана без encashment и advance:', retryShift)
+          console.log('Смена создана без новых полей:', retryShift)
           console.log('Премия в созданной смене:', retryShift.bonus_amount)
           console.log('Премия должна была быть:', calculatedBonus)
         } else {
@@ -438,6 +446,7 @@ export default function AdminPage() {
         notes: '',
         encashment: '',
         advance: '',
+        meal_allowance: '100',
       })
       setPhotos([])
       setShowForm(false)
@@ -679,6 +688,23 @@ export default function AdminPage() {
                     min="0"
                     value={formData.advance}
                     onChange={(e) => setFormData({...formData, advance: e.target.value})}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+                  Обед
+                </label>
+                <div className="relative">
+                  <Wallet className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.meal_allowance}
+                    onChange={(e) => setFormData({...formData, meal_allowance: e.target.value})}
                     className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700"
                   />
                 </div>

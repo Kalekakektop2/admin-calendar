@@ -20,6 +20,9 @@ interface Shift {
   bonus_amount: number
   shift_type: 'day' | 'night'
   notes: string | null
+  encashment: number
+  advance: number
+  meal_allowance: number
   created_at: string
   users: {
     full_name: string
@@ -401,6 +404,10 @@ export default function ManagerPage() {
                     <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
                       <p className="text-xs text-gray-600 dark:text-gray-400">Аванс</p>
                       <p className="font-bold text-orange-600 dark:text-orange-400">{formatCurrency(shift.advance || 0)}</p>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
+                      <p className="text-xs text-gray-600 dark:text-gray-400">Обед</p>
+                      <p className="font-bold text-blue-600 dark:text-blue-400">{formatCurrency(shift.meal_allowance || 100)}</p>
                     </div>
                     <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
                       <p className="text-xs text-gray-600 dark:text-gray-400">Тип смены</p>

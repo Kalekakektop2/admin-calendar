@@ -30,6 +30,9 @@ interface Shift {
   cash_balance: number
   bonus_amount: number
   shift_type: 'day' | 'night'
+  advance: number
+  meal_allowance: number
+  encashment: number
 }
 
 export default function MonthlyReportsPage() {
@@ -64,7 +67,7 @@ export default function MonthlyReportsPage() {
         admins.map(async (admin) => {
           const { data: shifts, error: shiftsError } = await supabase
             .from('shifts')
-            .select('id, total_revenue, cash_balance, bonus_amount, shift_type, shift_date')
+            .select('id, total_revenue, cash_balance, bonus_amount, shift_type, shift_date, advance, meal_allowance')
             .eq('user_id', admin.id)
             .gte('shift_date', startDate.toISOString().split('T')[0])
             .lte('shift_date', endDate.toISOString().split('T')[0])

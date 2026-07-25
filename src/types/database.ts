@@ -54,6 +54,7 @@ export interface Database {
           notes: string | null
           encashment: number
           advance: number
+          meal_allowance: number
           created_at: string
           updated_at: string
         }
@@ -69,6 +70,7 @@ export interface Database {
           notes?: string | null
           encashment?: number
           advance?: number
+          meal_allowance?: number
           created_at?: string
           updated_at?: string
         }
@@ -84,6 +86,7 @@ export interface Database {
           notes?: string | null
           encashment?: number
           advance?: number
+          meal_allowance?: number
           created_at?: string
           updated_at?: string
         }
