@@ -249,15 +249,21 @@ export function buildGoogleSheetCsvUrl(sheetId: string, gid = '0'): string {
   return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`
 }
 
+/** Таблица клуба по умолчанию (можно переопределить env) */
+const DEFAULT_SHEET_ID = '1pHFJ02udAaFvCHw8yb42o4T7F0jqPpBVSMSPW_4F_z4'
+const DEFAULT_SHEET_GID = '1289606171'
+
 export function resolveGoogleScheduleCsvUrl(): string | null {
   const direct = process.env.GOOGLE_SCHEDULE_CSV_URL?.trim()
   if (direct) return direct
 
-  const sheetId = process.env.GOOGLE_SCHEDULE_SHEET_ID?.trim()
-  if (!sheetId) return null
+  // Env или встроенный ID вашей таблицы (чтобы работало без настройки Vercel)
+  const sheetId =
+    process.env.GOOGLE_SCHEDULE_SHEET_ID?.trim() || DEFAULT_SHEET_ID
+  const gid =
+    process.env.GOOGLE_SCHEDULE_SHEET_GID?.trim() || DEFAULT_SHEET_GID
 
-  // gid листа «график» по умолчанию из вашей ссылки
-  const gid = process.env.GOOGLE_SCHEDULE_SHEET_GID?.trim() || '1289606171'
+  if (!sheetId) return null
   return buildGoogleSheetCsvUrl(sheetId, gid)
 }
 
