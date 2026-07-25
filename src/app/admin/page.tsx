@@ -314,6 +314,8 @@ export default function AdminPage() {
       let shift
       let shiftError
       
+      console.log('Попытка вставки с клиентским расчетом премии:', calculatedBonus)
+      
       const { data: initialShift, error: initialError } = await supabase
         .from('shifts')
         .insert(insertData)
@@ -340,6 +342,14 @@ export default function AdminPage() {
         console.log('Смена создана:', shift)
         console.log('Премия в созданной смене:', shift.bonus_amount)
         console.log('Премия должна была быть:', calculatedBonus)
+        
+        // Проверяем, совпадает ли премия
+        if (shift.bonus_amount !== calculatedBonus) {
+          console.warn('⚠️ ПРЕМУЯ БЫЛА ПЕРЕЗАПИСАНА ТРИГГЕРОМ БАЗЫ ДАННЫХ!')
+          console.warn('Клиентский расчет:', calculatedBonus)
+          console.warn('Значение в БД:', shift.bonus_amount)
+          console.warn('Разница:', shift.bonus_amount - calculatedBonus)
+        }
       }
 
       if (!shift) {
@@ -657,7 +667,7 @@ export default function AdminPage() {
               />
             </div>
 
-            {formData.cash_balance && (
+            {formData.total_revenue && (
               <div className="bg-green-50 border border-green-200 rounded-md p-4">
                 <div className="flex items-center">
                   <TrendingUp className="w-5 h-5 text-green-600 mr-2" />
