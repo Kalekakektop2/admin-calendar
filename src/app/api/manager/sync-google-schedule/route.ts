@@ -4,6 +4,7 @@ import {
   parseGoogleScheduleCsv,
   resolveGoogleScheduleCsvUrl,
   slotKey,
+  adminNameMatchKeys,
   type ShiftType,
 } from '@/lib/google-schedule'
 
@@ -89,17 +90,41 @@ export async function POST() {
 
     if (adminsError) throw adminsError
 
+    // Ключи: full_name, username, первое слово имени («Влад» из «Влад Иванов»)
     const adminByName = new Map<string, string>()
     for (const a of admins || []) {
-      if (a.full_name) adminByName.set(normalizeName(a.full_name), a.id)
-      if (a.username) adminByName.set(normalizeName(a.username), a.id)
+      if (a.full_name) {
+        for (const k of adminNameMatchKeys(a.full_name)) {
+          if (!adminByName.has(k)) adminByName.set(k, a.id)
+        }
+      }
+      if (a.username) {
+        const u = normalizeName(a.username)
+        if (!adminByName.has(u)) adminByName.set(u, a.id)
+      }
+    }
+
+    const resolveAdminId = (sheetName: string): string | null => {
+      for (const k of adminNameMatchKeys(sheetName)) {
+        const id = adminByName.get(k)
+        if (id) return id
+      }
+      // частичное: имя из таблицы входит в full_name
+      const n = normalizeName(sheetName)
+      for (const a of admins || []) {
+        const fn = normalizeName(a.full_name || '')
+        if (fn.includes(n) || n.includes(fn.split(' ')[0] || '')) {
+          return a.id
+        }
+      }
+      return null
     }
 
     const unmatchedNames = new Set<string>()
     const desired = new Map<string, { user_id: string; shift_date: string; shift_type: ShiftType }>()
 
     for (const row of googleRows) {
-      const userId = adminByName.get(normalizeName(row.admin_name))
+      const userId = resolveAdminId(row.admin_name)
       if (!userId) {
         unmatchedNames.add(row.admin_name)
         continue

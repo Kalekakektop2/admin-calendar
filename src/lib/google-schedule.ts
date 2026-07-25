@@ -56,98 +56,193 @@ export function parseCsv(text: string): string[][] {
   return rows
 }
 
-function normalizeHeader(h: string): string {
-  return h
-    .toLowerCase()
-    .replace(/\ufeff/g, '')
-    .trim()
-}
-
-function parseDate(raw: string): string | null {
-  const s = raw.trim()
-  if (!s) return null
-
-  // yyyy-mm-dd
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
-
-  // dd.mm.yyyy or dd/mm/yyyy
-  const m = s.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/)
-  if (m) {
-    const d = m[1].padStart(2, '0')
-    const mo = m[2].padStart(2, '0')
-    return `${m[3]}-${mo}-${d}`
-  }
-
-  // Excel serial date (number)
-  const n = Number(s)
-  if (Number.isFinite(n) && n > 30000 && n < 60000) {
-    const utc = new Date(Date.UTC(1899, 11, 30) + n * 86400000)
-    const y = utc.getUTCFullYear()
-    const mo = String(utc.getUTCMonth() + 1).padStart(2, '0')
-    const d = String(utc.getUTCDate()).padStart(2, '0')
-    return `${y}-${mo}-${d}`
-  }
-
-  return null
-}
-
-function parseShiftType(raw: string): ShiftType | null {
-  const s = raw.toLowerCase().trim()
-  if (!s) return null
-  if (['day', 'd', 'день', 'дн', 'дневная', 'дневн', 'д'].includes(s)) return 'day'
-  if (['night', 'n', 'ночь', 'ноч', 'ночная', 'ночн'].includes(s)) return 'night'
-  return null
-}
-
 /**
- * Ожидаемые колонки (заголовки, порядок любой):
- * date | дата
- * name | admin | админ | имя | фИО
- * type | shift | смена | тип
+ * Формат графика клуба (лист Google Sheets):
+ *   A          | B              | C        | D… (игнор)
+ *   01.07.2026 | 09:00 - 21:00  | Диана    | выручка…
+ *              | 21:00 - 09:00  | Влад     |
+ *   02.07.2026 | 09:00 - 21:00  | Сергей   |
+ *              | 21:00 - 09:00  | Макс П   |
+ *
+ * Берём только A, B, C (дата / интервал / имя).
+ * Пустое имя, «П», «О» без имени — слот пропускаем.
  */
-export function parseGoogleScheduleCsv(csvText: string): GoogleScheduleRow[] {
-  const table = parseCsv(csvText)
-  if (table.length < 2) return []
-
-  const header = table[0].map(normalizeHeader)
-  const findCol = (...names: string[]) => {
-    for (const n of names) {
-      const i = header.findIndex(h => h === n || h.includes(n))
-      if (i >= 0) return i
-    }
-    return -1
-  }
-
-  let dateIdx = findCol('date', 'дата', 'день')
-  let nameIdx = findCol('name', 'admin', 'админ', 'имя', 'фио', 'сотрудник')
-  let typeIdx = findCol('type', 'shift', 'смена', 'тип')
-
-  // Если заголовков нет — берём первые 3 колонки
-  if (dateIdx < 0 || nameIdx < 0 || typeIdx < 0) {
-    dateIdx = 0
-    nameIdx = 1
-    typeIdx = 2
-  }
-
+export function parseClubScheduleFromTable(table: string[][]): GoogleScheduleRow[] {
   const result: GoogleScheduleRow[] = []
-  for (let r = 1; r < table.length; r++) {
-    const line = table[r]
-    if (!line || line.length === 0) continue
+  let currentDate: string | null = null
 
-    const date = parseDate(line[dateIdx] || '')
-    const name = (line[nameIdx] || '').trim()
-    const type = parseShiftType(line[typeIdx] || '')
+  for (const cols of table) {
+    if (!cols || cols.length === 0) continue
 
-    if (!date || !name || !type) continue
+    // Только A, B, C
+    const colA = (cols[0] || '').replace(/\ufeff/g, '').trim()
+    const colB = (cols[1] || '').trim()
+    const colC = (cols[2] || '').trim()
+
+    // Пропуск шапки / мусора
+    if (/^дата/i.test(colA) || colA === '' && !colB) continue
+    if (colA && !parseDateLoose(colA) && !colB.includes(':')) continue
+
+    const dateFromA = parseDateLoose(colA)
+    if (dateFromA) currentDate = dateFromA
+
+    if (!currentDate) continue
+
+    const shiftType = parseTimeRangeToType(colB)
+    if (!shiftType) continue
+
+    const name = cleanAdminName(colC)
+    if (!name) continue
 
     result.push({
-      shift_date: date,
+      shift_date: currentDate,
       admin_name: name,
-      shift_type: type,
+      shift_type: shiftType,
     })
   }
 
   return result
+}
+
+/** dd.mm.yyyy, yyyy-mm-dd, иногда с хвостом «- 21:00» */
+function parseDateLoose(raw: string): string | null {
+  const s = raw.trim()
+  if (!s) return null
+
+  // 01.07.2026 или 01.07.2026- 21:00
+  const dmy = s.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})/)
+  if (dmy) {
+    const d = dmy[1].padStart(2, '0')
+    const mo = dmy[2].padStart(2, '0')
+    return `${dmy[3]}-${mo}-${d}`
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+
+  const ymd = s.match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})/)
+  if (ymd) {
+    return `${ymd[1]}-${ymd[2].padStart(2, '0')}-${ymd[3].padStart(2, '0')}`
+  }
+
+  return null
+}
+
+/** «09:00 - 21:00» → day, «21:00 - 09:00» → night */
+function parseTimeRangeToType(raw: string): ShiftType | null {
+  const s = raw.toLowerCase().replace(/\s+/g, ' ').trim()
+  if (!s) return null
+
+  // убрать возможные буквы П/О в конце интервала
+  const cleaned = s.replace(/[по]\s*$/i, '').trim()
+
+  if (
+    cleaned.includes('09:00') && cleaned.includes('21:00') &&
+    cleaned.indexOf('09') < cleaned.indexOf('21')
+  ) {
+    return 'day'
+  }
+  if (
+    cleaned.includes('21:00') && cleaned.includes('09:00') &&
+    cleaned.indexOf('21') < cleaned.indexOf('09')
+  ) {
+    return 'night'
+  }
+  // без минут
+  if (/09\s*[-–—]\s*21/.test(cleaned) || /9\s*[-–—]\s*21/.test(cleaned)) return 'day'
+  if (/21\s*[-–—]\s*09/.test(cleaned) || /21\s*[-–—]\s*9/.test(cleaned)) return 'night'
+
+  if (['day', 'день', 'дневная', 'дн'].includes(cleaned)) return 'day'
+  if (['night', 'ночь', 'ночная', 'ноч'].includes(cleaned)) return 'night'
+
+  return null
+}
+
+/**
+ * Имя админа: «Диана», «Влад», «Макс П», «Макс О», «Макс  »
+ * П/О в конце часто = подмена/выходной-метка — оставляем базовое имя «Макс»
+ * если это отдельный человек «Макс П» в системе, matching попробует оба варианта.
+ */
+function cleanAdminName(raw: string): string | null {
+  let s = raw.replace(/\s+/g, ' ').trim()
+  if (!s) return null
+
+  // Только код без имени
+  if (/^[по]$/i.test(s)) return null
+  if (/^(вых|выход|отгул|-|—|–)$/i.test(s)) return null
+
+  // «09:00 - 21:00» попало в C — не имя
+  if (/\d{1,2}:\d{2}/.test(s)) return null
+
+  return s
+}
+
+/**
+ * Варианты имени для сопоставления с users.full_name / username:
+ * «Макс П» → [«макс п», «макс»]
+ */
+export function adminNameMatchKeys(name: string): string[] {
+  const n = name.toLowerCase().replace(/\s+/g, ' ').trim()
+  const keys = new Set<string>([n])
+
+  // убрать суффикс П/О
+  const stripped = n.replace(/\s+[по]$/i, '').trim()
+  if (stripped) keys.add(stripped)
+
+  // первое слово
+  const first = n.split(' ')[0]
+  if (first) keys.add(first)
+
+  return Array.from(keys)
+}
+
+/**
+ * Главный парсер: формат клуба (A/B/C) + fallback на старый «дата,имя,тип».
+ */
+export function parseGoogleScheduleCsv(csvText: string): GoogleScheduleRow[] {
+  const table = parseCsv(csvText)
+  if (table.length === 0) return []
+
+  // Сначала формат клуба (дата | 09:00-21:00 | Имя)
+  const club = parseClubScheduleFromTable(table)
+  if (club.length > 0) return club
+
+  // Fallback: классические 3 колонки date,name,type
+  return parseSimpleThreeColumn(table)
+}
+
+function parseSimpleThreeColumn(table: string[][]): GoogleScheduleRow[] {
+  const result: GoogleScheduleRow[] = []
+  const start = looksLikeHeader(table[0]) ? 1 : 0
+
+  for (let r = start; r < table.length; r++) {
+    const line = table[r]
+    if (!line?.length) continue
+    const date = parseDateLoose(line[0] || '')
+    const name = cleanAdminName(line[1] || '')
+    const type =
+      parseTimeRangeToType(line[2] || '') ||
+      parseTimeRangeToType(line[1] || '') ||
+      null
+
+    // date, type, name
+    const name2 = cleanAdminName(line[2] || '')
+    const typeFromB = parseTimeRangeToType(line[1] || '')
+
+    if (date && typeFromB && name2) {
+      result.push({ shift_date: date, admin_name: name2, shift_type: typeFromB })
+      continue
+    }
+    if (date && name && type) {
+      result.push({ shift_date: date, admin_name: name, shift_type: type })
+    }
+  }
+  return result
+}
+
+function looksLikeHeader(row: string[] | undefined): boolean {
+  if (!row) return false
+  const j = row.join(' ').toLowerCase()
+  return j.includes('дата') || j.includes('date') || j.includes('админ')
 }
 
 export function buildGoogleSheetCsvUrl(sheetId: string, gid = '0'): string {
@@ -161,7 +256,8 @@ export function resolveGoogleScheduleCsvUrl(): string | null {
   const sheetId = process.env.GOOGLE_SCHEDULE_SHEET_ID?.trim()
   if (!sheetId) return null
 
-  const gid = process.env.GOOGLE_SCHEDULE_SHEET_GID?.trim() || '0'
+  // gid листа «график» по умолчанию из вашей ссылки
+  const gid = process.env.GOOGLE_SCHEDULE_SHEET_GID?.trim() || '1289606171'
   return buildGoogleSheetCsvUrl(sheetId, gid)
 }
 
