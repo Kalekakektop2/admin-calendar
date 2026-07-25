@@ -19,6 +19,9 @@ interface Shift {
   bonus_amount: number
   shift_type: 'day' | 'night'
   notes: string | null
+  encashment: number | null
+  advance: number | null
+  meal_allowance: number | null
   created_at: string
 }
 
@@ -69,7 +72,7 @@ export default function AdminPage() {
     notes: '',
     encashment: '',
     advance: '',
-    meal_allowance: '100',
+    meal_allowance: '',
   })
   const [photos, setPhotos] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
@@ -107,9 +110,9 @@ export default function AdminPage() {
       setShifts(data || [])
       
       // Calculate stats
-      const totalRevenue = data?.reduce((sum, shift) => sum + shift.total_revenue, 0) || 0
-      const totalCash = data?.reduce((sum, shift) => sum + shift.cash_balance, 0) || 0
-      const totalBonus = data?.reduce((sum, shift) => sum + shift.bonus_amount, 0) || 0
+      const totalRevenue = data?.reduce((sum, shift) => sum + shift.total_revenue, 0) ?? 0
+      const totalCash = data?.reduce((sum, shift) => sum + shift.cash_balance, 0) ?? 0
+      const totalBonus = data?.reduce((sum, shift) => sum + shift.bonus_amount, 0) ?? 0
       
       // Определяем период: до 15 числа или после
       const today = new Date()
@@ -150,12 +153,12 @@ export default function AdminPage() {
       }).reduce((sum, fine) => sum + fine.amount, 0)
       
       // Примерный заработок за период = заработок за смены + премия + обед - авансы - штрафы
-      const periodAdvances = periodShifts.reduce((sum, shift) => sum + (shift.advance || 0), 0)
-      const periodMealAllowance = periodShifts.reduce((sum, shift) => sum + (shift.meal_allowance || 100), 0)
+      const periodAdvances = periodShifts.reduce((sum, shift) => sum + (shift.advance ?? 0), 0)
+      const periodMealAllowance = periodShifts.reduce((sum, shift) => sum + (shift.meal_allowance ?? 100), 0)
       const estimatedEarnings = shiftEarnings + periodBonus + periodMealAllowance - periodAdvances - periodFines
       
       // Сейчас в кассе = общее количество из "Наличные за смену" - инкассация (за все время)
-      const totalEncashment = data?.reduce((sum, shift) => sum + (shift.encashment || 0), 0) || 0
+      const totalEncashment = data?.reduce((sum, shift) => sum + (shift.encashment ?? 0), 0) ?? 0
       const currentCash = totalCash - totalEncashment
       
       console.log('Расчет статистики:', {
@@ -339,7 +342,7 @@ export default function AdminPage() {
         shift_type: formData.shift_type,
         bonus_amount: calculatedBonus,
         notes: formData.notes,
-        encashment: parseFloat(formData.encashment) || 0
+        encashment: formData.encashment ? parseFloat(formData.encashment) : null
       })
       
       // Сначала пробуем с полем encashment
@@ -352,9 +355,9 @@ export default function AdminPage() {
         shift_type: formData.shift_type,
         bonus_amount: calculatedBonus,
         notes: formData.notes || null,
-        encashment: parseFloat(formData.encashment) || 0,
-        advance: parseFloat(formData.advance) || 0,
-        meal_allowance: parseFloat(formData.meal_allowance) || 100,
+        encashment: formData.encashment ? parseFloat(formData.encashment) : null,
+        advance: formData.advance ? parseFloat(formData.advance) : null,
+        meal_allowance: formData.meal_allowance ? parseFloat(formData.meal_allowance) : 100,
       }
       
       let shift
@@ -446,7 +449,7 @@ export default function AdminPage() {
         notes: '',
         encashment: '',
         advance: '',
-        meal_allowance: '100',
+        meal_allowance: '',
       })
       setPhotos([])
       setShowForm(false)
@@ -465,7 +468,7 @@ export default function AdminPage() {
   }
 
   const calculateBonus = () => {
-    const revenue = parseFloat(formData.total_revenue) || 0
+    const revenue = parseFloat(formData.total_revenue) ?? 0
     let bonus = 0
     
     // Система диапазонов для расчета премии
@@ -703,6 +706,7 @@ export default function AdminPage() {
                     type="number"
                     step="0.01"
                     min="0"
+                    placeholder="100"
                     value={formData.meal_allowance}
                     onChange={(e) => setFormData({...formData, meal_allowance: e.target.value})}
                     className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700"

@@ -101,10 +101,10 @@ export default function AdminSalaryPage() {
           const bonus = filteredShifts.reduce((sum, shift) => sum + shift.bonus_amount, 0)
           
           // Обед (из базы данных)
-          const mealAllowance = filteredShifts.reduce((sum, shift) => sum + (shift.meal_allowance || 100), 0)
+          const mealAllowance = filteredShifts.reduce((sum, shift) => sum + (shift.meal_allowance ?? 100), 0)
           
           // Авансы
-          const advances = filteredShifts.reduce((sum, shift) => sum + (shift.advance || 0), 0)
+          const advances = filteredShifts.reduce((sum, shift) => sum + (shift.advance ?? 0), 0)
           
           // Штрафы за период
           const { data: fines, error: finesError } = await supabase
@@ -116,7 +116,7 @@ export default function AdminSalaryPage() {
 
           if (finesError) throw finesError
           
-          const finesAmount = fines?.reduce((sum, fine) => sum + fine.amount, 0) || 0
+          const finesAmount = fines?.reduce((sum, fine) => sum + fine.amount, 0) ?? 0
           
           // Общая зарплата = заработок за смены + премия + обед - авансы - штрафы
           const totalSalary = shiftEarnings + bonus + mealAllowance - advances - finesAmount

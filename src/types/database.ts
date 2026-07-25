@@ -52,9 +52,9 @@ export interface Database {
           bonus_amount: number
           shift_type: ShiftType
           notes: string | null
-          encashment: number
-          advance: number
-          meal_allowance: number
+          encashment: number | null
+          advance: number | null
+          meal_allowance: number | null
           created_at: string
           updated_at: string
         }

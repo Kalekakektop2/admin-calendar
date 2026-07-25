@@ -30,9 +30,9 @@ interface Shift {
   cash_balance: number
   bonus_amount: number
   shift_type: 'day' | 'night'
-  advance: number
-  meal_allowance: number
-  encashment: number
+  advance: number | null
+  meal_allowance: number | null
+  encashment: number | null
 }
 
 export default function MonthlyReportsPage() {
@@ -86,12 +86,12 @@ export default function MonthlyReportsPage() {
             return shiftDate >= startDate && shiftDate <= endDate
           }) || []
 
-          const totalRevenue = filteredShifts.reduce((sum, shift) => sum + shift.total_revenue, 0) || 0
-          const totalCash = filteredShifts.reduce((sum, shift) => sum + shift.cash_balance, 0) || 0
-          const totalBonus = filteredShifts.reduce((sum, shift) => sum + shift.bonus_amount, 0) || 0
-          const shiftCount = filteredShifts.length || 0
-          const dayShifts = filteredShifts.filter(shift => shift.shift_type === 'day').length || 0
-          const nightShifts = filteredShifts.filter(shift => shift.shift_type === 'night').length || 0
+          const totalRevenue = filteredShifts.reduce((sum, shift) => sum + shift.total_revenue, 0) ?? 0
+          const totalCash = filteredShifts.reduce((sum, shift) => sum + shift.cash_balance, 0) ?? 0
+          const totalBonus = filteredShifts.reduce((sum, shift) => sum + shift.bonus_amount, 0) ?? 0
+          const shiftCount = filteredShifts.length ?? 0
+          const dayShifts = filteredShifts.filter(shift => shift.shift_type === 'day').length ?? 0
+          const nightShifts = filteredShifts.filter(shift => shift.shift_type === 'night').length ?? 0
 
           return {
             id: admin.id,

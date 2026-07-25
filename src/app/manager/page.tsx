@@ -20,9 +20,9 @@ interface Shift {
   bonus_amount: number
   shift_type: 'day' | 'night'
   notes: string | null
-  encashment: number
-  advance: number
-  meal_allowance: number
+  encashment: number | null
+  advance: number | null
+  meal_allowance: number | null
   created_at: string
   users: {
     full_name: string
@@ -149,17 +149,17 @@ export default function ManagerPage() {
           .in('shift_id', shiftIds)
 
         if (photoError) throw photoError
-        photoCount = count || 0
+        photoCount = count ?? 0
       }
 
-      const totalRevenue = filteredShifts.reduce((sum, shift) => sum + shift.total_revenue, 0) || 0
-      const totalCash = filteredShifts.reduce((sum, shift) => sum + shift.cash_balance, 0) || 0
-      const dayShifts = filteredShifts.filter(shift => shift.shift_type === 'day').length || 0
-      const nightShifts = filteredShifts.filter(shift => shift.shift_type === 'night').length || 0
-      const totalBonus = filteredShifts.reduce((sum, shift) => sum + shift.bonus_amount, 0) || 0
+      const totalRevenue = filteredShifts.reduce((sum, shift) => sum + shift.total_revenue, 0) ?? 0
+      const totalCash = filteredShifts.reduce((sum, shift) => sum + shift.cash_balance, 0) ?? 0
+      const dayShifts = filteredShifts.filter(shift => shift.shift_type === 'day').length ?? 0
+      const nightShifts = filteredShifts.filter(shift => shift.shift_type === 'night').length ?? 0
+      const totalBonus = filteredShifts.reduce((sum, shift) => sum + shift.bonus_amount, 0) ?? 0
       
       // Сейчас в кассе = общее количество из "Наличные за смену" - инкассация
-      const totalEncashment = filteredShifts.reduce((sum, shift) => sum + (shift.encashment || 0), 0) || 0
+      const totalEncashment = filteredShifts.reduce((sum, shift) => sum + (shift.encashment ?? 0), 0) ?? 0
       const currentCash = totalCash - totalEncashment
 
       setStats({
@@ -168,8 +168,8 @@ export default function ManagerPage() {
         dayShifts,
         nightShifts,
         totalBonus,
-        shiftCount: filteredShifts.length || 0,
-        photoCount: photoCount || 0,
+        shiftCount: filteredShifts.length ?? 0,
+        photoCount: photoCount ?? 0,
         currentCash,
       })
     } catch (error) {
@@ -399,15 +399,15 @@ export default function ManagerPage() {
                     </div>
                     <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
                       <p className="text-xs text-gray-600 dark:text-gray-400">Инкассация</p>
-                      <p className="font-bold text-red-600 dark:text-red-400">{formatCurrency(shift.encashment || 0)}</p>
+                      <p className="font-bold text-red-600 dark:text-red-400">{formatCurrency(shift.encashment ?? 0)}</p>
                     </div>
                     <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
                       <p className="text-xs text-gray-600 dark:text-gray-400">Аванс</p>
-                      <p className="font-bold text-orange-600 dark:text-orange-400">{formatCurrency(shift.advance || 0)}</p>
+                      <p className="font-bold text-orange-600 dark:text-orange-400">{formatCurrency(shift.advance ?? 0)}</p>
                     </div>
                     <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
                       <p className="text-xs text-gray-600 dark:text-gray-400">Обед</p>
-                      <p className="font-bold text-blue-600 dark:text-blue-400">{formatCurrency(shift.meal_allowance || 100)}</p>
+                      <p className="font-bold text-blue-600 dark:text-blue-400">{formatCurrency(shift.meal_allowance ?? 100)}</p>
                     </div>
                     <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
                       <p className="text-xs text-gray-600 dark:text-gray-400">Тип смены</p>
@@ -460,34 +460,6 @@ export default function ManagerPage() {
                 ) : (
                   <p className="text-gray-900 dark:text-gray-100">Нет фотографий</p>
                 )}
-              </div>
-            )}
-          </div>
-        </Modal>
-      )}
-
-          <div>
-            <h4 className="font-semibold mb-4 text-gray-900 dark:text-white">Фотофиксация ({shiftPhotos.length})</h4>
-            {shiftPhotos.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {shiftPhotos.map((photo) => (
-                  <div key={photo.id} className="relative group">
-                    <img
-                      src={photo.photo_url}
-                      alt="Shift photo"
-                      className="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-90"
-                      onClick={() => window.open(photo.photo_url, '_blank')}
-                    />
-                    <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-2 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                      {format(new Date(photo.uploaded_at), 'HH:mm')}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <ImageIcon className="mx-auto h-12 w-12 text-gray-700 dark:text-gray-500" />
-                <p className="mt-2 text-gray-900 dark:text-gray-100">Нет фотографий для этой смены</p>
               </div>
             )}
           </div>
