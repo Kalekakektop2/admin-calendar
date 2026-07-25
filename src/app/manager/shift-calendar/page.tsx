@@ -32,7 +32,8 @@ export default function ShiftCalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [admins, setAdmins] = useState<Admin[]>([])
   const [plannedShifts, setPlannedShifts] = useState<PlannedShift[]>([])
-  const [selectedAdmin, setSelectedAdmin] = useState<Admin | null>(null)
+  /** 'all' = показать всех; uuid = фильтр + постановка смен этому админу */
+  const [filterAdminId, setFilterAdminId] = useState<string>('all')
   const [selectedShiftType, setSelectedShiftType] = useState<'day' | 'night'>('day')
   const [editingMode, setEditingMode] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -61,15 +62,19 @@ export default function ShiftCalendarPage() {
 
       if (error) throw error
       setAdmins(data || [])
-      
-      // Автоматически выбираем первого админа
-      if (data && data.length > 0 && !selectedAdmin) {
-        setSelectedAdmin(data[0])
-      }
     } catch (error) {
       console.error('Error loading admins:', error)
     }
   }
+
+  const selectedAdmin =
+    filterAdminId === 'all' ? null : admins.find(a => a.id === filterAdminId) || null
+
+  /** Смены с учётом фильтра «Все админы» / один админ */
+  const visibleShifts =
+    filterAdminId === 'all'
+      ? plannedShifts
+      : plannedShifts.filter(s => s.user_id === filterAdminId)
 
   const loadPlannedShifts = async () => {
     try {
@@ -100,7 +105,7 @@ export default function ShiftCalendarPage() {
 
   const getShiftsForDate = (date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd')
-    return plannedShifts.filter(s => s.shift_date === dateStr)
+    return visibleShifts.filter(s => s.shift_date === dateStr)
   }
 
   const handleDayClick = async (date: Date) => {
@@ -109,8 +114,8 @@ export default function ShiftCalendarPage() {
       return
     }
 
-    if (!selectedAdmin) {
-      alert('Выберите администратора')
+    if (filterAdminId === 'all' || !selectedAdmin) {
+      alert('Выберите конкретного администратора в фильтре (не «Все админы»), чтобы поставить смену.')
       return
     }
 
@@ -364,23 +369,28 @@ export default function ShiftCalendarPage() {
               </div>
             </div>
 
-            {/* Выбор администратора */}
-            <div className="flex-1 min-w-[200px]">
+            {/* Фильтр администратора */}
+            <div className="flex-1 min-w-[220px]">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Администратор
+                Фильтр: администратор
               </label>
               <select
-                value={selectedAdmin?.id || ''}
-                onChange={(e) => {
-                  const admin = admins.find(a => a.id === e.target.value)
-                  setSelectedAdmin(admin || null)
-                }}
-                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
+                value={filterAdminId}
+                onChange={(e) => setFilterAdminId(e.target.value)}
+                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-gray-900 dark:text-gray-100"
               >
+                <option value="all">Все админы</option>
                 {admins.map(admin => (
-                  <option key={admin.id} value={admin.id}>{admin.full_name}</option>
+                  <option key={admin.id} value={admin.id}>
+                    {admin.full_name}
+                  </option>
                 ))}
               </select>
+              <p className="text-xs text-gray-500 mt-1">
+                {filterAdminId === 'all'
+                  ? 'Показаны все. Для постановки смены выберите админа.'
+                  : `Показан: ${selectedAdmin?.full_name}. Клик по дню — смена для него.`}
+              </p>
             </div>
           </div>
 
@@ -409,34 +419,65 @@ export default function ShiftCalendarPage() {
           </div>
         </div>
 
-        {/* Палитра админов с цветами */}
+        {/* Палитра / быстрый фильтр */}
         <div className="mt-4 pt-4 border-t dark:border-gray-700">
           <div className="flex items-center gap-2 mb-2">
             <Users className="w-4 h-4" />
-            <span className="text-sm font-medium">Администраторы (цвета):</span>
+            <span className="text-sm font-medium">Быстрый фильтр:</span>
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setFilterAdminId('all')}
+              className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                filterAdminId === 'all'
+                  ? 'bg-indigo-600 text-white border-indigo-600'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
+              }`}
+            >
+              Все админы
+            </button>
             {admins.map(admin => (
-              <div key={admin.id} className="flex items-center gap-2">
-                <div 
-                  className="w-6 h-6 rounded-full border-2 border-white shadow cursor-pointer"
-                  style={{ backgroundColor: admin.color }}
-                  onClick={() => setSelectedAdmin(admin)}
+              <button
+                key={admin.id}
+                type="button"
+                onClick={() => setFilterAdminId(admin.id)}
+                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                  filterAdminId === admin.id
+                    ? 'ring-2 ring-offset-1 ring-indigo-500 border-transparent text-white'
+                    : 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
+                }`}
+                style={
+                  filterAdminId === admin.id
+                    ? { backgroundColor: admin.color || '#4f46e5' }
+                    : undefined
+                }
+              >
+                <span
+                  className="w-3 h-3 rounded-full border border-white/50 shrink-0"
+                  style={{ backgroundColor: admin.color || '#3b82f6' }}
                 />
-                <span className={`text-sm ${selectedAdmin?.id === admin.id ? 'font-bold' : ''}`}>
+                <span className={filterAdminId === admin.id ? 'text-white' : 'text-gray-900 dark:text-gray-100'}>
                   {admin.full_name}
                 </span>
                 {editingMode && (
                   <input
                     type="color"
-                    value={admin.color}
-                    onChange={(e) => updateAdminColor(admin.id, e.target.value)}
-                    className="w-8 h-8 p-0 border-0 cursor-pointer"
+                    value={admin.color || '#3b82f6'}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => {
+                      e.stopPropagation()
+                      updateAdminColor(admin.id, e.target.value)
+                    }}
+                    className="w-6 h-6 p-0 border-0 cursor-pointer rounded"
                   />
                 )}
-              </div>
+              </button>
             ))}
           </div>
+          <p className="text-xs text-gray-500 mt-2">
+            На календаре: {filterAdminId === 'all' ? `все смены (${visibleShifts.length})` : `только ${selectedAdmin?.full_name || '…'} (${visibleShifts.length})`}
+          </p>
         </div>
       </div>
 
