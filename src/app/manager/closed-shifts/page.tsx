@@ -201,7 +201,7 @@ export default function ClosedShiftsPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Тип</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400">Выручка</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400">Наличные</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400">Карта</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400">Аванс</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400">Бонус</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400">Фото</th>
                 </tr>
@@ -209,7 +209,15 @@ export default function ClosedShiftsPage() {
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {closedShifts.map(shift => (
                   <tr key={shift.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                    <td className="px-4 py-3 text-sm">{format(new Date(shift.shift_date), 'dd.MM.yyyy')}</td>
+                    <td className="px-4 py-3 text-sm">
+                      {format(
+                        (() => {
+                          const [y, m, d] = shift.shift_date.split('-').map(Number)
+                          return new Date(y, m - 1, d)
+                        })(),
+                        'dd.MM.yyyy'
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div 
@@ -231,7 +239,9 @@ export default function ClosedShiftsPage() {
                     </td>
                     <td className="px-4 py-3 text-right font-mono text-sm">{formatCurrency(shift.total_revenue)}</td>
                     <td className="px-4 py-3 text-right font-mono text-sm">{formatCurrency(shift.cash_balance)}</td>
-                    <td className="px-4 py-3 text-right font-mono text-sm">{formatCurrency(shift.card_revenue)}</td>
+                    <td className="px-4 py-3 text-right font-mono text-sm text-orange-600 dark:text-orange-400">
+                      {formatCurrency(shift.advance ?? 0)}
+                    </td>
                     <td className="px-4 py-3 text-right font-mono text-sm text-green-600 dark:text-green-400">
                       {formatCurrency(shift.bonus_amount)}
                     </td>

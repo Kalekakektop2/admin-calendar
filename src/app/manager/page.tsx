@@ -62,11 +62,18 @@ export default function ManagerPage() {
     loadStats()
   }, [currentDate])
 
+  // Дата из БД (yyyy-MM-dd) → локальная дата без сдвига UTC
+  const parseLocalDate = (dateStr: string) => {
+    const [y, m, d] = dateStr.split('-').map(Number)
+    return new Date(y, m - 1, d)
+  }
+
   const loadShifts = async () => {
     try {
-      const startDate = startOfMonth(currentDate)
-      const endDate = endOfMonth(currentDate)
+      const startStr = format(startOfMonth(currentDate), 'yyyy-MM-dd')
+      const endStr = format(endOfMonth(currentDate), 'yyyy-MM-dd')
 
+      // Берём смены по shift_date (день и ночь хранят дату начала смены)
       const { data, error } = await supabase
         .from('shifts')
         .select(`
@@ -76,23 +83,12 @@ export default function ManagerPage() {
             email
           )
         `)
+        .gte('shift_date', startStr)
+        .lte('shift_date', endStr)
         .order('shift_date', { ascending: true })
 
       if (error) throw error
-      
-      // Фильтруем смены по отображаемой дате для ночных смен
-      const filteredShifts = (data || []).filter(shift => {
-        const shiftDate = new Date(shift.shift_date)
-        if (shift.shift_type === 'night') {
-          // Для ночных смен проверяем предыдущий день
-          const previousDay = new Date(shiftDate)
-          previousDay.setDate(previousDay.getDate() - 1)
-          return previousDay >= startDate && previousDay <= endDate
-        }
-        return shiftDate >= startDate && shiftDate <= endDate
-      })
-      
-      setShifts(filteredShifts)
+      setShifts(data || [])
     } catch (error) {
       console.error('Error loading shifts:', error)
     } finally {
@@ -102,27 +98,19 @@ export default function ManagerPage() {
 
   const loadStats = async () => {
     try {
-      const startDate = startOfMonth(currentDate)
-      const endDate = endOfMonth(currentDate)
+      const startStr = format(startOfMonth(currentDate), 'yyyy-MM-dd')
+      const endStr = format(endOfMonth(currentDate), 'yyyy-MM-dd')
 
       const { data: shiftsData, error: shiftsError } = await supabase
         .from('shifts')
-        .select('total_revenue, cash_balance, bonus_amount, shift_type, shift_date, id')
+        .select('total_revenue, cash_balance, bonus_amount, shift_type, shift_date, id, encashment')
+        .gte('shift_date', startStr)
+        .lte('shift_date', endStr)
         .order('shift_date', { ascending: true })
 
       if (shiftsError) throw shiftsError
 
-      // Фильтруем смены по отображаемой дате для ночных смен
-      const filteredShifts = (shiftsData || []).filter(shift => {
-        const shiftDate = new Date(shift.shift_date)
-        if (shift.shift_type === 'night') {
-          // Для ночных смен проверяем предыдущий день
-          const previousDay = new Date(shiftDate)
-          previousDay.setDate(previousDay.getDate() - 1)
-          return previousDay >= startDate && previousDay <= endDate
-        }
-        return shiftDate >= startDate && shiftDate <= endDate
-      })
+      const filteredShifts = shiftsData || []
 
       // Получаем ID смен за текущий месяц для подсчета фотографий
       const shiftIds = filteredShifts.map(shift => shift.id)
@@ -285,10 +273,7 @@ export default function ManagerPage() {
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {shifts.map((shift) => {
-              // Для ночных смен показываем предыдущий день в таблице
-              const displayDate = shift.shift_type === 'night' 
-                ? new Date(new Date(shift.shift_date).setDate(new Date(shift.shift_date).getDate() - 1))
-                : new Date(shift.shift_date)
+              const displayDate = parseLocalDate(shift.shift_date)
               
               return (
                 <tr key={shift.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
