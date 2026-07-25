@@ -1,255 +1,317 @@
 # Админский календарь
 
-Система внутренней отчетности и управления для компьютерного клуба с разделением на роли Администратора и Руководителя.
+Система внутренней отчётности и управления для компьютерного клуба.  
+Роли: **Администратор** (`admin`) и **Руководитель** (`manager`).
+
+**Репозиторий:** [github.com/Kalekakektop2/admin-calendar](https://github.com/Kalekakektop2/admin-calendar)  
+**Деплой:** Vercel (автоматически при `push` в `main`)
+
+---
 
 ## Технологический стек
 
-- **Frontend**: Next.js 14 (App Router) + TypeScript + Tailwind CSS
-- **Backend**: Supabase (PostgreSQL, Storage, Auth)
-- **UI**: Lucide React icons
-- **Date handling**: date-fns
+| Слой | Технологии |
+|------|------------|
+| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4 |
+| Backend / Auth / DB | Supabase (PostgreSQL, Auth, Storage, RLS) |
+| UI | Lucide React |
+| Даты | date-fns (+ локаль `ru`) |
+
+---
 
 ## Возможности
 
-### Для Администраторов:
-- Форма отчета за смену с ключевыми показателями
-- Обязательная фотофиксация рабочего места
-- Авторасчет премий на основе выручки
-- История отправленных смен
+### Панель руководителя (`/manager`)
 
-### Для Руководителей:
-- Интерактивный календарь для просмотра отчетов
-- Финансовая сводка с метриками за период
-- Аудит загруженных фотографий
-- Детальный просмотр смен и фотофиксации
+| Раздел | URL | Описание |
+|--------|-----|----------|
+| Все смены за месяц | `/manager` | Статистика + таблица закрытых отчётов за месяц (без календаря) |
+| Календарь смен | `/manager/shift-calendar` | Выставление смен админам (день/ночь), цвета админов, режим редактирования |
+| Закрытые смены | `/manager/closed-shifts` | Только смены, которые были **запланированы** и **закрыты** админом; фильтр по администратору |
+| Месячные отчёты | `/manager/monthly-reports` | Сводка по месяцу |
+| Зарплаты | `/manager/admin-salary` | Расчёт зарплат администраторов |
+| Штрафы | `/manager/fines` | Управление штрафами |
+| Создать / удалить админа | `/manager/create-admin`, `/manager/delete-admin` | Управление пользователями |
 
-## Установка и настройка
+### Панель администратора (`/admin`)
 
-### 1. Клонирование и установка зависимостей
+| Раздел | URL | Описание |
+|--------|-----|----------|
+| Главная | `/admin` | Закрытие смены, статистика, штрафы, история своих закрытых смен |
+| Мои смены | `/admin/my-shifts` | **Расписание** от руководителя (`planned_shifts`), календарь; фильтр «только свои / все админы» |
+
+### Закрытие смены (правила)
+
+1. Закрыть смену можно **только если** руководитель выставил её в «Календаре смен».
+2. **Дата и тип (день/ночь)** определяются автоматически по текущему времени:
+   - **09:00–21:00** → День, дата = сегодня  
+   - **21:00–00:00** → Ночь, дата = сегодня (день **начала** ночи)  
+   - **00:00–09:00** → Ночь, дата = вчера  
+3. **Обед (`meal_allowance`)** всегда **100 ₽**, поле у админа скрыто.
+4. Обязательна **фотофиксация** (минимум 1 фото).
+5. Сохраняются: выручка, наличные, инкассация, **аванс**, примечания, премия.
+6. Рейтинг **«Топ»** — место админа среди всех по **общей выручке** (RPC `get_admin_revenue_ranks`).
+
+### Премия (клиентский расчёт по выручке)
+
+| Выручка (₽) | Премия (₽) |
+|-------------|------------|
+| 8 000 – 9 999 | 300 |
+| 10 000 – 11 999 | 500 |
+| 12 000 – 13 999 | 700 |
+| 14 000 – 17 999 | … (см. код `calculateBonus` в `src/app/admin/page.tsx`) |
+
+*(В БД также есть `bonus_config` и триггеры — при расхождении сверяйте клиентский расчёт и триггеры.)*
+
+---
+
+## Быстрый старт
+
+### 1. Клонирование и зависимости
 
 ```bash
+git clone https://github.com/Kalekakektop2/admin-calendar.git
 cd admin-calendar
 npm install
 ```
 
-### 2. Настройка Supabase
+### 2. Переменные окружения
 
-#### Создание проекта:
-1. Перейдите на [supabase.com](https://supabase.com)
-2. Создайте новый проект
-3. Дождитесь завершения инициализации
-
-#### Получение учетных данных:
-1. В настройках проекта (Project Settings > API)
-2. Скопируйте `Project URL` и `anon public key`
-
-#### Применение миграций базы данных:
-
-Файлы миграций находятся в папке `supabase/migrations/`:
-
-1. `001_initial_schema.sql` - Основная схема базы данных
-2. `002_bonus_config.sql` - Конфигурация системы бонусов
-3. `003_bonus_calculation_function.sql` - Функции автоматического расчета бонусов
-
-Выполните их в Supabase SQL Editor в порядке нумерации.
-
-#### Настройка Storage:
-
-Выполните SQL из файла `supabase/storage_setup.sql` в Supabase SQL Editor для создания bucket для фотографий.
-
-### 3. Настройка переменных окружения
-
-Создайте файл `.env.local` в корне проекта:
+Скопируйте `env.example` → `.env.local`:
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=your-project-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-Используйте значения из настроек вашего Supabase проекта.
+Значения: Supabase → **Project Settings → API**.
 
-### 4. Создание тестовых пользователей
+### 3. Миграции БД
 
-После применения миграций будет создан тестовый пользователь-руководитель:
-- Email: `manager@example.com`
-- Роль: `manager`
+Выполните SQL-файлы из `supabase/migrations/` **по порядку** в Supabase SQL Editor:
 
-Для создания администраторов выполните в Supabase SQL Editor:
+| Файл | Назначение |
+|------|------------|
+| `001_initial_schema.sql` | users, shifts, shift_photos, RLS |
+| `002_bonus_config.sql` | Конфиг бонусов |
+| `003_bonus_calculation_function.sql` | Функции/триггеры бонусов |
+| `004_fines.sql` | Штрафы |
+| `004_fix_bonus_amount_nullable.sql` | nullable bonus |
+| `005_encashment.sql` | Инкассация |
+| `005_remove_revenue_constraint.sql` | Снятие ограничений выручки |
+| `006_add_shift_type.sql` | Тип смены day/night |
+| `006_update_bonus_config.sql` | Обновление конфига бонусов |
+| `007_advances.sql` | Таблица advances |
+| `007_fix_photo_policies.sql` | Политики Storage/фото |
+| `008_add_username.sql` | username у users |
+| `008_advance_field.sql` | Поле `advance` в shifts |
+| `009_increase_decimal_limits.sql` | Увеличение DECIMAL |
+| `009_meal_allowance.sql` | Обед |
+| `010_update_bonus_calculation.sql` | Пересчёт бонусов |
+| `011_planned_shifts_and_user_color.sql` | **`planned_shifts` + `users.color`** |
+| `012_planned_shifts_admin_read_all.sql` | Админы видят все planned_shifts и профили |
+| `013_admin_revenue_rank.sql` | Функция **Топ** по выручке |
+
+Затем выполните `supabase/storage_setup.sql` (bucket `shift-photos`).
+
+### 4. Пользователи
+
+1. Создайте пользователя в **Supabase Auth → Users**.
+2. Добавьте запись в `users` с **тем же UUID**:
 
 ```sql
--- Создание пользователя в Supabase Auth
--- (сделайте это через UI Supabase: Authentication > Users)
-
--- После создания пользователя добавьте запись в таблицу users:
-INSERT INTO users (id, email, full_name, role)
-VALUES ('user-id-from-auth', 'admin@example.com', 'Имя Администратора', 'admin');
+INSERT INTO users (id, email, full_name, username, role, color)
+VALUES (
+  'auth-user-id',
+  'admin@example.com',
+  'Имя Фамилия',
+  'admin_login',
+  'admin',          -- или 'manager'
+  '#3b82f6'
+);
 ```
 
-Важно: ID пользователя должен совпадать с ID в Supabase Auth.
-
-### 5. Запуск проекта
+### 5. Запуск
 
 ```bash
-npm run dev
+npm run dev      # http://localhost:3000
+npm run build
+npm start
+npm run lint
 ```
 
-Приложение будет доступно по адресу `http://localhost:3000`
+### 6. Деплой (Vercel + GitHub)
+
+```bash
+git add .
+git commit -m "описание изменений"
+git push origin main
+```
+
+Vercel подхватывает `main` автоматически.  
+Переменные `NEXT_PUBLIC_SUPABASE_*` должны быть заданы в настройках проекта Vercel.
+
+---
 
 ## Структура проекта
 
 ```
 admin-calendar/
 ├── src/
-│   ├── app/                      # Next.js App Router
-│   │   ├── admin/               # Интерфейс администратора
-│   │   ├── manager/             # Интерфейс руководителя
-│   │   ├── login/               # Страница входа
-│   │   ├── logout/              # Страница выхода
-│   │   └── unauthorized/         # Страница доступа запрещен
+│   ├── app/
+│   │   ├── admin/
+│   │   │   ├── page.tsx              # Главная админа (закрытие смены, статистика, штрафы)
+│   │   │   ├── my-shifts/page.tsx    # Расписание (planned_shifts)
+│   │   │   └── layout.tsx
+│   │   ├── manager/
+│   │   │   ├── page.tsx              # Все смены за месяц
+│   │   │   ├── shift-calendar/       # Выставление смен
+│   │   │   ├── closed-shifts/        # Закрытые + фильтр админов
+│   │   │   ├── monthly-reports/
+│   │   │   ├── admin-salary/
+│   │   │   ├── fines/
+│   │   │   ├── create-admin/
+│   │   │   ├── delete-admin/
+│   │   │   └── layout.tsx
+│   │   ├── login/ | logout/ | unauthorized/
+│   │   ├── layout.tsx | page.tsx | globals.css
 │   ├── components/
-│   │   └── providers/           # React провайдеры
+│   │   ├── providers/                # Supabase, тема
+│   │   └── ui/                       # card, modal, stat-card, file-upload, theme-toggle
 │   ├── lib/
-│   │   ├── supabase/            # Supabase клиенты
-│   │   └── auth.ts              # Функции авторизации
-│   └── types/
-│       └── database.ts          # TypeScript типы для БД
+│   │   ├── auth.ts                   # requireRole, getUserRole, …
+│   │   ├── supabase/                 # client + server
+│   │   └── utils.ts
+│   ├── middleware.ts                 # Защита /admin, /manager
+│   └── types/database.ts             # Типы схемы
 ├── supabase/
-│   ├── migrations/              # SQL миграции
-│   └── storage_setup.sql        # Настройка Storage
-└── env.example                  # Пример переменных окружения
+│   ├── migrations/                   # 001–013
+│   └── storage_setup.sql
+├── env.example
+├── package.json
+└── README.md
 ```
 
-## Схема базы данных
+---
 
-### Таблица `users`
-- `id` - UUID (primary key)
-- `email` - уникальный email
-- `full_name` - полное имя
-- `role` - роль пользователя ('admin' или 'manager')
-- `created_at`, `updated_at` - временные метки
+## Схема базы данных (основные таблицы)
 
-### Таблица `shifts`
-- `id` - UUID (primary key)
-- `user_id` - ссылка на пользователя
-- `shift_date` - дата смены
-- `total_revenue` - общая выручка
-- `cash_balance` - наличные в кассе
-- `card_revenue` - безналичный расчет
-- `bonus_amount` - рассчитанный бонус
-- `notes` - примечания
-- `created_at`, `updated_at` - временные метки
+### `users`
+| Поле | Описание |
+|------|----------|
+| `id` | UUID = Auth user id |
+| `email`, `full_name`, `username` | Профиль |
+| `role` | `admin` \| `manager` |
+| `color` | HEX-цвет в календаре (у каждого админа свой) |
 
-### Таблица `shift_photos`
-- `id` - UUID (primary key)
-- `shift_id` - ссылка на смену
-- `photo_url` - публичный URL фото
-- `photo_path` - путь в Storage
-- `description` - описание фото
-- `uploaded_at` - время загрузки
+### `planned_shifts` (расписание)
+| Поле | Описание |
+|------|----------|
+| `user_id` | Админ |
+| `shift_date` | Дата смены |
+| `shift_type` | `day` \| `night` |
+| UNIQUE | `(user_id, shift_date, shift_type)` |
 
-### Таблица `bonus_config`
-- `id` - UUID (primary key)
-- `bonus_percentage` - процент от выручки для бонуса
-- `base_bonus_amount` - базовая сумма бонуса
-- `min_revenue_for_bonus` - минимальная выручка для бонуса
-- `max_bonus_amount` - максимальный бонус (опционально)
-- `is_active` - активна ли конфигурация
+### `shifts` (закрытые отчёты)
+| Поле | Описание |
+|------|----------|
+| `user_id`, `shift_date`, `shift_type` | Кто, когда, день/ночь |
+| `total_revenue`, `cash_balance`, `card_revenue` | Финансы |
+| `bonus_amount` | Премия |
+| `encashment` | Инкассация |
+| `advance` | Аванс |
+| `meal_allowance` | Обед (фиксированно 100) |
+| `notes` | Примечания |
 
-## Безопасность
+### `shift_photos`
+Фото к смене (Storage bucket `shift-photos`).
 
-### Row Level Security (RLS)
+### `fines`
+Штрафы: `user_id`, `amount`, `fine_date`, `comment`.
 
-Все таблицы защищены RLS политиками:
+### `advances` (отдельная таблица)
+Авансы, выдаваемые руководителем (историческая/доп. сущность; в отчёте смены используется поле `shifts.advance`).
 
-- **Администраторы** могут видеть и редактировать только свои смены
-- **Руководители** имеют полный доступ ко всем данным
-- **Фотографии** доступны только автору смены и руководителям
+### `bonus_config`
+Настройки расчёта бонуса на стороне БД.
 
-### Auth
+### RPC
+- `get_admin_revenue_ranks()` — рейтинг админов по сумме `total_revenue` (для блока **Топ**).
 
-- Используется Supabase Auth для аутентификации
-- Middleware защищает маршруты по ролям
-- Перенаправление на страницу входа для неавторизованных
+---
 
-## Формула расчета бонуса
+## Безопасность (RLS)
 
-Бонус рассчитывается автоматически при создании смены:
+- Таблицы с **Row Level Security**.
+- Руководитель: полный доступ к сменам, планам, штрафам, пользователям.
+- Администратор:
+  - свои закрытые смены (create/update/select own);
+  - просмотр **всех** `planned_shifts` (расписание коллег) — миграция `012`;
+  - просмотр профилей коллег (имена/цвета);
+  - рейтинг через SECURITY DEFINER-функцию `013`.
+- Маршруты `/admin` и `/manager` защищены `middleware` + проверкой роли в layout.
 
+---
+
+## Типовые SQL-операции
+
+### Удалить все закрытые смены и фото
+
+```sql
+DELETE FROM shift_photos;
+DELETE FROM shifts;
 ```
-Бонус = base_bonus_amount + (total_revenue * bonus_percentage / 100)
+
+### Удалить ещё и расписание
+
+```sql
+DELETE FROM shift_photos;
+DELETE FROM shifts;
+DELETE FROM planned_shifts;
 ```
 
-Ограничения:
-- Если `total_revenue < min_revenue_for_bonus`, бонус = 0
-- Если задан `max_bonus_amount`, бонус ограничивается этим значением
+### Проверка
 
-По умолчанию:
-- `bonus_percentage`: 5%
-- `base_bonus_amount`: 0 ₽
-- `min_revenue_for_bonus`: 0 ₽
-- `max_bonus_amount`: не ограничен
+```sql
+SELECT COUNT(*) FROM shifts;
+SELECT COUNT(*) FROM planned_shifts;
+```
 
-## Разработка
+---
 
-### Запуск в режиме разработки
+## Разработка и Git
 
 ```bash
 npm run dev
-```
-
-### Сборка для продакшена
-
-```bash
 npm run build
-npm start
-```
-
-### Линтинг
-
-```bash
 npm run lint
+
+git add .
+git commit -m "feat: ..."
+git push origin main   # → Vercel deploy
 ```
 
-## Дополнительная настройка
+**Не коммитить** `.env.local` и секреты.
 
-### Изменение формулы бонуса
+Изменения схемы — **только новыми миграциями** в `supabase/migrations/`, с обновлением `src/types/database.ts` при необходимости.
 
-Обновите конфигурацию в таблице `bonus_config` через Supabase SQL Editor:
+---
 
-```sql
-UPDATE bonus_config
-SET bonus_percentage = 7.00,
-    base_bonus_amount = 500.00,
-    min_revenue_for_bonus = 10000.00,
-    max_bonus_amount = 5000.00
-WHERE is_active = true;
-```
+## Устранение неполадок
 
-### Добавление новых пользователей
+| Проблема | Что проверить |
+|----------|----------------|
+| Не логинится | `.env.local` / env на Vercel, Auth user + запись в `users` |
+| «Нет запланированной смены» | Есть ли запись в `planned_shifts` на дату/тип; миграция `011` |
+| «Мои смены» пустые у коллег | Миграция `012` (RLS SELECT) |
+| Топ показывает «—» | Миграция `013`, функция `get_admin_revenue_ranks` |
+| Аванс всегда 0 | Колонка `advance` (`008_advance_field.sql`); повторно закрыть смену после фикса |
+| Фото не грузятся | `storage_setup.sql`, bucket `shift-photos`, политики Storage |
+| Ошибка policy already exists | В SQL: `DROP POLICY IF EXISTS "..." ON table;` перед `CREATE POLICY` |
 
-1. Создайте пользователя в Supabase Auth (UI)
-2. Добавьте запись в таблицу `users`:
-
-```sql
-INSERT INTO users (id, email, full_name, role)
-VALUES ('auth-user-id', 'email@example.com', 'Полное Имя', 'admin');
-```
-
-## Поддержка
-
-При возникновении проблем:
-
-1. Проверьте настройки Supabase в `.env.local`
-2. Убедитесь, что миграции применены корректно
-3. Проверьте консоль браузера на наличие ошибок
-4. Проверьте логи Supabase в Dashboard
+---
 
 ## Лицензия
 
-Админский календарь - Система внутренней отчетности для компьютерного клуба
-
-Этот проект создан для внутреннего использования компьютерным клубом.
-
-Использование данного программного обеспечения разрешено всем пользователям.
-
-Мы будем рады любой обратной связи и предложениям по улучшению системы.
+Внутреннее использование компьютерным клубом.  
+Обратная связь и предложения по улучшению приветствуются.
