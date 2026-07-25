@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isSameDay } from 'date-fns'
 import { ru } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Sun, Moon, Edit2, Trash2, Users } from 'lucide-react'
+import Link from 'next/link'
+import { ChevronLeft, ChevronRight, Sun, Moon, Edit2, Trash2, Users, ArrowLeft } from 'lucide-react'
 
 interface Admin {
   id: string
@@ -193,6 +194,13 @@ export default function ShiftCalendarPage() {
     <div>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div>
+          <Link
+            href="/manager"
+            className="inline-flex items-center gap-1.5 text-sm text-indigo-600 dark:text-indigo-400 hover:underline mb-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Назад в главное меню
+          </Link>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Календарь смен</h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             Выставляйте смены администраторам. Нажмите на день, чтобы добавить/удалить смену.
