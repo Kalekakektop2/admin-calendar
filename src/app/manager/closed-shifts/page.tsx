@@ -43,13 +43,34 @@ export default function ClosedShiftsPage() {
   const [selectedShift, setSelectedShift] = useState<ClosedShift | null>(null)
   const [shiftPhotos, setShiftPhotos] = useState<ShiftPhoto[]>([])
   const [showPhotosModal, setShowPhotosModal] = useState(false)
+  const [admins, setAdmins] = useState<Array<{ id: string; full_name: string; color?: string }>>([])
+  const [selectedAdminId, setSelectedAdminId] = useState<string>('all')
 
   const monthStart = startOfMonth(currentDate)
   const monthEnd = endOfMonth(currentDate)
 
   useEffect(() => {
+    loadAdmins()
+  }, [])
+
+  useEffect(() => {
     loadClosedShifts()
   }, [currentDate])
+
+  const loadAdmins = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, full_name, color')
+        .eq('role', 'admin')
+        .order('full_name')
+
+      if (error) throw error
+      setAdmins(data || [])
+    } catch (error) {
+      console.error('Error loading admins:', error)
+    }
+  }
 
   const loadClosedShifts = async () => {
     try {
@@ -127,9 +148,13 @@ export default function ClosedShiftsPage() {
     }
   }
 
-  const totalRevenue = closedShifts.reduce((sum, s) => sum + (s.total_revenue || 0), 0)
-  const totalCash = closedShifts.reduce((sum, s) => sum + (s.cash_balance || 0), 0)
-  const totalBonus = closedShifts.reduce((sum, s) => sum + (s.bonus_amount || 0), 0)
+  const filteredShifts = selectedAdminId === 'all'
+    ? closedShifts
+    : closedShifts.filter(s => s.user_id === selectedAdminId)
+
+  const totalRevenue = filteredShifts.reduce((sum, s) => sum + (s.total_revenue || 0), 0)
+  const totalCash = filteredShifts.reduce((sum, s) => sum + (s.cash_balance || 0), 0)
+  const totalBonus = filteredShifts.reduce((sum, s) => sum + (s.bonus_amount || 0), 0)
 
   return (
     <div>
@@ -149,6 +174,7 @@ export default function ClosedShiftsPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={() => setCurrentDate(subMonths(currentDate, 1))}
             className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700"
           >
@@ -158,12 +184,35 @@ export default function ClosedShiftsPage() {
             {format(currentDate, 'LLLL yyyy', { locale: ru })}
           </span>
           <button
+            type="button"
             onClick={() => setCurrentDate(addMonths(currentDate, 1))}
             className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
         </div>
+      </div>
+
+      {/* Фильтр по администратору */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300 shrink-0">
+          Администратор:
+        </label>
+        <select
+          value={selectedAdminId}
+          onChange={(e) => setSelectedAdminId(e.target.value)}
+          className="w-full sm:max-w-xs px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-gray-900 dark:text-gray-100"
+        >
+          <option value="all">Все администраторы</option>
+          {admins.map(admin => (
+            <option key={admin.id} value={admin.id}>
+              {admin.full_name}
+            </option>
+          ))}
+        </select>
+        <span className="text-sm text-gray-500 dark:text-gray-400">
+          Показано: {filteredShifts.length}
+        </span>
       </div>
 
       {/* Статистика */}
@@ -186,9 +235,11 @@ export default function ClosedShiftsPage() {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-gray-500">Загрузка...</div>
-        ) : closedShifts.length === 0 ? (
+        ) : filteredShifts.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
-            Нет закрытых смен за выбранный месяц.<br />
+            Нет закрытых смен за выбранный месяц
+            {selectedAdminId !== 'all' ? ' для этого администратора' : ''}.
+            <br />
             Сначала выставьте смены в «Календаре смен», затем администраторы должны их закрыть.
           </div>
         ) : (
@@ -207,7 +258,7 @@ export default function ClosedShiftsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {closedShifts.map(shift => (
+                {filteredShifts.map(shift => (
                   <tr key={shift.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     <td className="px-4 py-3 text-sm">
                       {format(
