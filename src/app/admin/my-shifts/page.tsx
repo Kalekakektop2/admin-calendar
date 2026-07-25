@@ -5,48 +5,27 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths } from 'date-fns'
 import { ru } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, DollarSign, CreditCard, Wallet, Image as ImageIcon, ArrowLeft, Sun, Moon } from 'lucide-react'
-import { Modal } from '@/components/ui/modal'
-import { formatCurrency } from '@/lib/utils'
+import { ChevronLeft, ChevronRight, ArrowLeft, Sun, Moon } from 'lucide-react'
 
-interface Shift {
+interface PlannedShift {
   id: string
   user_id: string
   shift_date: string
-  total_revenue: number
-  cash_balance: number
-  card_revenue: number
-  bonus_amount: number
   shift_type: 'day' | 'night'
-  notes: string | null
-  encashment: number | null
-  advance: number | null
-  meal_allowance: number | null
-  created_at: string
   users?: {
     full_name: string
     color?: string
   }
 }
 
-interface ShiftPhoto {
-  id: string
-  photo_url: string
-  description: string | null
-}
-
 export default function MyShiftsPage() {
   const supabase = createClient()
-  const [shifts, setShifts] = useState<Shift[]>([])
-  const [allShifts, setAllShifts] = useState<Shift[]>([])
+  const [plannedShifts, setPlannedShifts] = useState<PlannedShift[]>([])
   const [loading, setLoading] = useState(true)
   const [showOnlyMine, setShowOnlyMine] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string>('')
-  const [selectedShift, setSelectedShift] = useState<Shift | null>(null)
-  const [shiftPhotos, setShiftPhotos] = useState<ShiftPhoto[]>([])
-  const [showPhotosModal, setShowPhotosModal] = useState(false)
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [selectedDayShifts, setSelectedDayShifts] = useState<Shift[]>([])
+  const [selectedDayShifts, setSelectedDayShifts] = useState<PlannedShift[]>([])
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
 
   const monthStart = startOfMonth(currentDate)
@@ -54,19 +33,10 @@ export default function MyShiftsPage() {
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd })
 
   useEffect(() => {
-    loadShifts()
-  }, [])
+    loadPlannedShifts()
+  }, [currentDate])
 
-  useEffect(() => {
-    if (!currentUserId) return
-    applyFilter(showOnlyMine, allShifts, currentUserId)
-  }, [showOnlyMine, allShifts, currentUserId])
-
-  const applyFilter = (onlyMine: boolean, data: Shift[], userId: string) => {
-    setShifts(onlyMine ? data.filter(s => s.user_id === userId) : data)
-  }
-
-  const loadShifts = async () => {
+  const loadPlannedShifts = async () => {
     try {
       setLoading(true)
       const { data: { user } } = await supabase.auth.getUser()
@@ -74,64 +44,46 @@ export default function MyShiftsPage() {
 
       setCurrentUserId(user.id)
 
+      const startDate = format(monthStart, 'yyyy-MM-dd')
+      const endDate = format(monthEnd, 'yyyy-MM-dd')
+
       const { data, error } = await supabase
-        .from('shifts')
+        .from('planned_shifts')
         .select(`
-          *,
+          id,
+          user_id,
+          shift_date,
+          shift_type,
           users (
             full_name,
             color
           )
         `)
-        .order('shift_date', { ascending: false })
+        .gte('shift_date', startDate)
+        .lte('shift_date', endDate)
+        .order('shift_date', { ascending: true })
 
       if (error) throw error
-
-      setAllShifts(data || [])
-      applyFilter(true, data || [], user.id)
+      setPlannedShifts((data as any) || [])
     } catch (error) {
-      console.error('Error loading shifts:', error)
+      console.error('Error loading planned shifts:', error)
+      setPlannedShifts([])
     } finally {
       setLoading(false)
     }
   }
 
-  const getDisplayDate = (shift: Shift) => {
-    if (shift.shift_type === 'night') {
-      const d = new Date(shift.shift_date)
-      d.setDate(d.getDate() - 1)
-      return d
-    }
-    return new Date(shift.shift_date)
-  }
+  const filteredShifts = showOnlyMine
+    ? plannedShifts.filter(s => s.user_id === currentUserId)
+    : plannedShifts
 
   const getShiftsForDate = (date: Date) => {
-    return shifts.filter(shift => isSameDay(getDisplayDate(shift), date))
+    const dateStr = format(date, 'yyyy-MM-dd')
+    return filteredShifts.filter(s => s.shift_date === dateStr)
   }
 
-  const monthShifts = shifts.filter(shift => {
-    const d = getDisplayDate(shift)
-    return d >= monthStart && d <= monthEnd
-  })
-
-  const loadShiftPhotos = async (shiftId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('shift_photos')
-        .select('id, photo_url, description')
-        .eq('shift_id', shiftId)
-
-      if (error) throw error
-      setShiftPhotos(data || [])
-      setShowPhotosModal(true)
-    } catch (error) {
-      console.error('Error loading photos:', error)
-    }
-  }
-
-  const totalRevenue = monthShifts.reduce((sum, s) => sum + (s.total_revenue || 0), 0)
-  const totalCash = monthShifts.reduce((sum, s) => sum + (s.cash_balance || 0), 0)
-  const totalBonus = monthShifts.reduce((sum, s) => sum + (s.bonus_amount || 0), 0)
+  const myCount = plannedShifts.filter(s => s.user_id === currentUserId).length
+  const allCount = plannedShifts.length
 
   return (
     <div className="space-y-6">
@@ -146,40 +98,25 @@ export default function MyShiftsPage() {
           </Link>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Мои смены</h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            {showOnlyMine ? 'Показаны только ваши смены' : 'Показаны все смены всех администраторов'}
+            Смены, которые выставил руководитель (расписание).{' '}
+            {showOnlyMine
+              ? `Показаны только ваши (${myCount} за месяц)`
+              : `Показаны все администраторы (${allCount} за месяц)`}
           </p>
         </div>
         <button
-          onClick={() => setShowOnlyMine(!showOnlyMine)}
+          onClick={() => {
+            setShowOnlyMine(!showOnlyMine)
+            setSelectedDayShifts([])
+            setSelectedDate(null)
+          }}
           className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm"
         >
-          {showOnlyMine ? 'Показать все смены' : 'Показать только мои'}
+          {showOnlyMine ? 'Показать всех админов' : 'Показать только мои'}
         </button>
       </div>
 
-      {/* Статистика за месяц */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
-          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <DollarSign className="w-4 h-4" /> Выручка за месяц
-          </div>
-          <div className="text-2xl font-bold mt-1">{formatCurrency(totalRevenue)}</div>
-        </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
-          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <Wallet className="w-4 h-4" /> Наличные
-          </div>
-          <div className="text-2xl font-bold mt-1">{formatCurrency(totalCash)}</div>
-        </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
-          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <CreditCard className="w-4 h-4" /> Бонусы
-          </div>
-          <div className="text-2xl font-bold mt-1">{formatCurrency(totalBonus)}</div>
-        </div>
-      </div>
-
-      {/* Календарь */}
+      {/* Календарь запланированных смен */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
         <div className="flex items-center justify-between mb-4">
           <button
@@ -228,34 +165,36 @@ export default function MyShiftsPage() {
                   }}
                   disabled={!hasShifts}
                   className={`
-                    min-h-[72px] sm:min-h-[90px] rounded-lg flex flex-col items-center p-1
+                    min-h-[80px] sm:min-h-[100px] rounded-lg flex flex-col items-stretch p-1
                     ${hasShifts ? 'hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer' : 'text-gray-300 dark:text-gray-600 cursor-default'}
                     ${isSelected ? 'ring-2 ring-indigo-500 bg-indigo-50 dark:bg-indigo-900/30' : ''}
                     ${isToday && !isSelected ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
                   `}
                 >
-                  <span className={`text-xs font-medium ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-gray-100'}`}>
+                  <span className={`text-xs font-medium self-center ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-gray-100'}`}>
                     {format(date, 'd')}
                   </span>
-                  {hasShifts && dayShifts.slice(0, 2).map((shift) => (
-                    <div
-                      key={shift.id}
-                      className="text-[10px] w-full truncate text-center flex items-center justify-center gap-0.5 mt-0.5"
-                      style={shift.users?.color ? { color: shift.users.color } : undefined}
-                    >
-                      {shift.shift_type === 'day' ? (
-                        <Sun className="w-3 h-3 text-yellow-500 shrink-0" />
-                      ) : (
-                        <Moon className="w-3 h-3 text-indigo-500 shrink-0" />
-                      )}
-                      <span className="truncate text-gray-800 dark:text-gray-200">
-                        {!showOnlyMine ? (shift.users?.full_name || 'Админ') : (shift.shift_type === 'day' ? 'День' : 'Ночь')}
-                      </span>
-                    </div>
-                  ))}
-                  {dayShifts.length > 2 && (
-                    <span className="text-[10px] text-gray-500">+{dayShifts.length - 2}</span>
-                  )}
+                  <div className="mt-1 space-y-0.5">
+                    {dayShifts.map((shift) => (
+                      <div
+                        key={shift.id}
+                        className="text-[10px] px-1 py-0.5 rounded text-white truncate flex items-center gap-0.5"
+                        style={{ backgroundColor: shift.users?.color || '#6366f1' }}
+                        title={`${shift.users?.full_name || 'Админ'} — ${shift.shift_type === 'day' ? 'День' : 'Ночь'}`}
+                      >
+                        {shift.shift_type === 'day' ? (
+                          <Sun className="w-2.5 h-2.5 shrink-0" />
+                        ) : (
+                          <Moon className="w-2.5 h-2.5 shrink-0" />
+                        )}
+                        <span className="truncate">
+                          {showOnlyMine
+                            ? (shift.shift_type === 'day' ? 'День' : 'Ночь')
+                            : (shift.users?.full_name || 'Админ')}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </button>
               )
             })}
@@ -263,12 +202,12 @@ export default function MyShiftsPage() {
         )}
       </div>
 
-      {/* Список смен выбранного дня */}
+      {/* Детали выбранного дня */}
       {selectedDayShifts.length > 0 && selectedDate && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
           <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
             <h3 className="font-bold text-gray-900 dark:text-gray-100">
-              Смены за {format(selectedDate, 'dd MMMM yyyy', { locale: ru })}
+              Расписание на {format(selectedDate, 'dd MMMM yyyy', { locale: ru })}
             </h3>
             <button
               onClick={() => {
@@ -282,87 +221,71 @@ export default function MyShiftsPage() {
           </div>
           <div className="divide-y dark:divide-gray-700">
             {selectedDayShifts.map(shift => (
-              <div key={shift.id} className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div key={shift.id} className="p-4 flex items-center gap-3">
+                <div
+                  className="w-4 h-4 rounded-full shrink-0"
+                  style={{ backgroundColor: shift.users?.color || '#6366f1' }}
+                />
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${
-                      shift.shift_type === 'day'
-                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                        : 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200'
-                    }`}>
-                      {shift.shift_type === 'day' ? 'День' : 'Ночь'}
-                    </span>
-                    {!showOnlyMine && (
-                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {shift.users?.full_name}
-                      </span>
+                  <div className="font-medium text-gray-900 dark:text-gray-100">
+                    {shift.users?.full_name || 'Администратор'}
+                  </div>
+                  <div className="text-sm text-gray-500 flex items-center gap-1 mt-0.5">
+                    {shift.shift_type === 'day' ? (
+                      <>
+                        <Sun className="w-3.5 h-3.5 text-yellow-500" />
+                        День (09:00–21:00)
+                      </>
+                    ) : (
+                      <>
+                        <Moon className="w-3.5 h-3.5 text-indigo-500" />
+                        Ночь (21:00–09:00)
+                      </>
                     )}
                   </div>
-                  <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
-                    <div>
-                      <span className="text-gray-500">Выручка: </span>
-                      <span className="font-medium">{formatCurrency(shift.total_revenue)}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Наличные: </span>
-                      <span className="font-medium">{formatCurrency(shift.cash_balance)}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Бонус: </span>
-                      <span className="font-medium text-green-600">{formatCurrency(shift.bonus_amount)}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Обед: </span>
-                      <span className="font-medium">{formatCurrency(shift.meal_allowance ?? 100)}</span>
-                    </div>
-                  </div>
                 </div>
-                <button
-                  onClick={() => {
-                    setSelectedShift(shift)
-                    loadShiftPhotos(shift.id)
-                  }}
-                  className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 text-sm"
-                >
-                  <ImageIcon className="w-4 h-4" />
-                  Фото
-                </button>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Таблица всех смен месяца */}
+      {/* Список на месяц */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
         <div className="p-4 border-b dark:border-gray-700">
-          <h3 className="font-bold text-gray-900 dark:text-gray-100">Список смен за месяц</h3>
+          <h3 className="font-bold text-gray-900 dark:text-gray-100">Список выставленных смен за месяц</h3>
         </div>
-        {monthShifts.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">Смены не найдены</div>
+        {filteredShifts.length === 0 ? (
+          <div className="p-8 text-center text-gray-500">
+            {showOnlyMine
+              ? 'Руководитель ещё не выставил вам смены на этот месяц'
+              : 'Нет выставленных смен на этот месяц'}
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-900">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Дата</th>
-                  {!showOnlyMine && (
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Админ</th>
-                  )}
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Администратор</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Тип</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400">Выручка</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400">Наличные</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400">Бонус</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400">Фото</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {monthShifts.map(shift => (
+                {filteredShifts.map(shift => (
                   <tr key={shift.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                    <td className="px-4 py-3 text-sm">{format(getDisplayDate(shift), 'dd.MM.yyyy')}</td>
-                    {!showOnlyMine && (
-                      <td className="px-4 py-3 text-sm">{shift.users?.full_name || '—'}</td>
-                    )}
+                    <td className="px-4 py-3 text-sm">
+                      {format(new Date(shift.shift_date + 'T12:00:00'), 'dd.MM.yyyy')}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: shift.users?.color || '#6366f1' }}
+                        />
+                        {shift.users?.full_name || '—'}
+                      </div>
+                    </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${
                         shift.shift_type === 'day'
@@ -372,22 +295,6 @@ export default function MyShiftsPage() {
                         {shift.shift_type === 'day' ? 'День' : 'Ночь'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-sm">{formatCurrency(shift.total_revenue)}</td>
-                    <td className="px-4 py-3 text-right font-mono text-sm">{formatCurrency(shift.cash_balance)}</td>
-                    <td className="px-4 py-3 text-right font-mono text-sm text-green-600 dark:text-green-400">
-                      {formatCurrency(shift.bonus_amount)}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={() => {
-                          setSelectedShift(shift)
-                          loadShiftPhotos(shift.id)
-                        }}
-                        className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700"
-                      >
-                        <ImageIcon className="w-4 h-4" />
-                      </button>
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -395,37 +302,6 @@ export default function MyShiftsPage() {
           </div>
         )}
       </div>
-
-      <Modal
-        isOpen={showPhotosModal}
-        onClose={() => {
-          setShowPhotosModal(false)
-          setSelectedShift(null)
-          setShiftPhotos([])
-        }}
-        title={`Фотографии — ${selectedShift ? format(getDisplayDate(selectedShift), 'dd.MM.yyyy') : ''}`}
-      >
-        {shiftPhotos.length === 0 ? (
-          <p className="text-gray-500">Фотографии отсутствуют</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {shiftPhotos.map(photo => (
-              <div key={photo.id} className="space-y-2">
-                <a href={photo.photo_url} target="_blank" rel="noopener noreferrer">
-                  <img
-                    src={photo.photo_url}
-                    alt={photo.description || 'Фото смены'}
-                    className="w-full h-48 object-cover rounded-lg border dark:border-gray-700 hover:opacity-90 transition-opacity"
-                  />
-                </a>
-                {photo.description && (
-                  <p className="text-xs text-gray-600 dark:text-gray-400">{photo.description}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </Modal>
     </div>
   )
 }

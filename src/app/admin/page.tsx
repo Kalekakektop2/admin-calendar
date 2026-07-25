@@ -265,23 +265,22 @@ export default function AdminPage() {
     }
   }
 
-  // Автоматическое определение типа смены и даты по текущему времени
+  // День: 09:00–21:00 → дата сегодня, тип day
+  // Ночь: 21:00–00:00 → дата сегодня (день начала ночи), тип night
+  // Ночь: 00:00–09:00 → дата вчера (день начала ночи), тип night
   const getAutoShiftInfo = () => {
     const now = new Date()
     const hour = now.getHours()
-    const isNight = hour >= 21 || hour < 9
 
-    let shiftDate = format(now, 'yyyy-MM-dd')
-    let shiftType: 'day' | 'night' = isNight ? 'night' : 'day'
-
-    // Если сейчас ночь (21:00-09:00) — смена считается за предыдущий день
-    if (isNight) {
+    if (hour >= 21) {
+      return { shiftDate: format(now, 'yyyy-MM-dd'), shiftType: 'night' as const }
+    }
+    if (hour < 9) {
       const prevDay = new Date(now)
       prevDay.setDate(prevDay.getDate() - 1)
-      shiftDate = format(prevDay, 'yyyy-MM-dd')
+      return { shiftDate: format(prevDay, 'yyyy-MM-dd'), shiftType: 'night' as const }
     }
-
-    return { shiftDate, shiftType }
+    return { shiftDate: format(now, 'yyyy-MM-dd'), shiftType: 'day' as const }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -304,20 +303,60 @@ export default function AdminPage() {
         throw new Error('Необходимо выбрать администратора')
       }
 
-      // === НОВАЯ ЛОГИКА: автоопределение День/Ночь и даты ===
+      // Автоопределение День/Ночь и даты по текущему времени
       const { shiftDate: autoDate, shiftType: autoType } = getAutoShiftInfo()
 
-      // Проверка: существует ли запланированная смена на эту дату и тип?
+      // Проверка: есть ли запланированная смена на эту дату и тип
       const { data: plannedShift, error: plannedError } = await supabase
         .from('planned_shifts')
+        .select('id, shift_date, shift_type')
+        .eq('user_id', userId)
+        .eq('shift_date', autoDate)
+        .eq('shift_type', autoType)
+        .maybeSingle()
+
+      if (plannedError) {
+        console.error('planned_shifts check error:', plannedError)
+        alert(`Ошибка проверки смены: ${plannedError.message}. Убедитесь, что миграция 011 применена в Supabase.`)
+        setUploading(false)
+        return
+      }
+
+      if (!plannedShift) {
+        // Показываем ближайшие запланированные смены этого админа для отладки
+        const { data: myPlanned } = await supabase
+          .from('planned_shifts')
+          .select('shift_date, shift_type')
+          .eq('user_id', userId)
+          .order('shift_date', { ascending: true })
+          .limit(10)
+
+        const list = (myPlanned || [])
+          .map(p => `${p.shift_date} (${p.shift_type === 'day' ? 'день' : 'ночь'})`)
+          .join(', ')
+
+        alert(
+          `У вас нет запланированной смены на ${autoDate} (${autoType === 'day' ? 'день' : 'ночь'}).\n` +
+          `Сейчас система определила: ${autoDate} / ${autoType === 'day' ? 'День' : 'Ночь'}.\n` +
+          (list
+            ? `Ваши ближайшие выставленные смены: ${list}`
+            : 'У вас нет ни одной выставленной смены в календаре руководителя.')
+        )
+        setUploading(false)
+        return
+      }
+
+      // Нельзя закрыть смену дважды
+      const { data: alreadyClosed } = await supabase
+        .from('shifts')
         .select('id')
         .eq('user_id', userId)
         .eq('shift_date', autoDate)
         .eq('shift_type', autoType)
-        .single()
+        .maybeSingle()
 
-      if (plannedError || !plannedShift) {
-        alert(`У вас нет запланированной смены на ${autoDate} (${autoType === 'day' ? 'день' : 'ночь'}). Обратитесь к руководителю.`)
+      if (alreadyClosed) {
+        alert('Эта смена уже закрыта.')
         setUploading(false)
         return
       }
