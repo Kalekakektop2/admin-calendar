@@ -219,6 +219,8 @@ export interface Database {
           user_id: string
           shift_date: string
           shift_type: ShiftType
+          source: 'google' | 'manual'
+          manual_override: boolean
           created_at: string
           updated_at: string
         }
@@ -227,6 +229,8 @@ export interface Database {
           user_id: string
           shift_date: string
           shift_type: ShiftType
+          source?: 'google' | 'manual'
+          manual_override?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -235,8 +239,33 @@ export interface Database {
           user_id?: string
           shift_date?: string
           shift_type?: ShiftType
+          source?: 'google' | 'manual'
+          manual_override?: boolean
           created_at?: string
           updated_at?: string
+        }
+      }
+      planned_shift_blocks: {
+        Row: {
+          id: string
+          user_id: string
+          shift_date: string
+          shift_type: ShiftType
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          shift_date: string
+          shift_type: ShiftType
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          shift_date?: string
+          shift_type?: ShiftType
+          created_at?: string
         }
       }
     }

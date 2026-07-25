@@ -111,6 +111,18 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 | `011_planned_shifts_and_user_color.sql` | **`planned_shifts` + `users.color`** |
 | `012_planned_shifts_admin_read_all.sql` | Админы видят все planned_shifts и профили |
 | `013_admin_revenue_rank.sql` | Функция **Топ** по выручке |
+| `014_planned_shifts_google_source.sql` | Google-синк: `source`, `manual_override`, `planned_shift_blocks` |
+
+### Google Sheets (расписание)
+
+1. Создайте таблицу с колонками: **дата | админ | тип** (`день` / `ночь`).
+2. Доступ: **Все, у кого есть ссылка → Читатель**.
+3. В `.env.local` / Vercel:
+   - `GOOGLE_SCHEDULE_SHEET_ID=...` и опционально `GOOGLE_SCHEDULE_SHEET_GID=0`
+   - или `GOOGLE_SCHEDULE_CSV_URL=https://docs.google.com/spreadsheets/d/.../export?format=csv&gid=0`
+4. В «Календарь смен» нажмите **«Синк с Google»**.
+5. **Ручные правки руководителя** (`source=manual` / `manual_override`) **не перезаписываются** Google.
+6. Если руководитель **удалил** смену — слот блокируется (`planned_shift_blocks`), Google не вернёт её, пока руководитель не поставит снова.
 
 Затем выполните `supabase/storage_setup.sql` (bucket `shift-photos`).
 

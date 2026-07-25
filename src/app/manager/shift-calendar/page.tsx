@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isSameDay } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import Link from 'next/link'
-import { ChevronLeft, ChevronRight, Sun, Moon, Edit2, Trash2, Users, ArrowLeft } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Sun, Moon, Edit2, Trash2, Users, ArrowLeft, RefreshCw } from 'lucide-react'
 
 interface Admin {
   id: string
@@ -19,6 +19,8 @@ interface PlannedShift {
   user_id: string
   shift_date: string
   shift_type: 'day' | 'night'
+  source?: 'google' | 'manual'
+  manual_override?: boolean
   users?: {
     full_name: string
     color: string
@@ -34,6 +36,8 @@ export default function ShiftCalendarPage() {
   const [selectedShiftType, setSelectedShiftType] = useState<'day' | 'night'>('day')
   const [editingMode, setEditingMode] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [syncing, setSyncing] = useState(false)
+  const [syncMessage, setSyncMessage] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [modalDate, setModalDate] = useState<Date | null>(null)
   const [modalShifts, setModalShifts] = useState<PlannedShift[]>([])
@@ -119,28 +123,51 @@ export default function ShiftCalendarPage() {
 
     if (existingShift) {
       if (confirm(`Удалить смену «${selectedAdmin.full_name}» (${selectedShiftType === 'day' ? 'День' : 'Ночь'})?`)) {
-        const { error } = await supabase.from('planned_shifts').delete().eq('id', existingShift.id)
-        if (error) {
-          alert(`Ошибка удаления: ${error.message}`)
-          return
-        }
-        await loadPlannedShifts()
+        await removePlannedShift(existingShift)
       }
     } else {
       try {
+        // Ручная постановка руководителем — Google не перезапишет
         const { error } = await supabase.from('planned_shifts').insert({
           user_id: selectedAdmin.id,
           shift_date: dateStr,
           shift_type: selectedShiftType,
-        })
+          source: 'manual',
+          manual_override: true,
+        } as any)
 
         if (error) {
           if (error.code === '23505') {
-            alert('Эта смена уже запланирована')
+            // Слот уже есть (например от Google) — помечаем как ручной override
+            const { error: upError } = await supabase
+              .from('planned_shifts')
+              .update({ source: 'manual', manual_override: true } as any)
+              .eq('user_id', selectedAdmin.id)
+              .eq('shift_date', dateStr)
+              .eq('shift_type', selectedShiftType)
+            if (upError) {
+              alert(`Ошибка: ${upError.message}`)
+            } else {
+              // Снимаем блок, если был
+              await supabase
+                .from('planned_shift_blocks')
+                .delete()
+                .eq('user_id', selectedAdmin.id)
+                .eq('shift_date', dateStr)
+                .eq('shift_type', selectedShiftType)
+              await loadPlannedShifts()
+            }
           } else {
             alert(`Ошибка при создании смены: ${error.message}`)
           }
         } else {
+          // Если раньше блокровали этот слот — снимаем блок
+          await supabase
+            .from('planned_shift_blocks')
+            .delete()
+            .eq('user_id', selectedAdmin.id)
+            .eq('shift_date', dateStr)
+            .eq('shift_type', selectedShiftType)
           await loadPlannedShifts()
         }
       } catch (error) {
@@ -150,26 +177,68 @@ export default function ShiftCalendarPage() {
     }
   }
 
+  /** Удаление смены + блок для Google (чтобы не вернула смену обратно) */
+  const removePlannedShift = async (shift: PlannedShift) => {
+    const { error } = await supabase.from('planned_shifts').delete().eq('id', shift.id)
+    if (error) {
+      alert(`Ошибка удаления: ${error.message}`)
+      return false
+    }
+
+    // Блокируем слот: Google-синк не поставит снова, пока руководитель сам не вернёт
+    await supabase.from('planned_shift_blocks').upsert(
+      {
+        user_id: shift.user_id,
+        shift_date: shift.shift_date,
+        shift_type: shift.shift_type,
+      } as any,
+      { onConflict: 'user_id,shift_date,shift_type' }
+    )
+
+    await loadPlannedShifts()
+    return true
+  }
+
   /** Клик по конкретной смене в ячейке — удалить именно её */
   const handleShiftChipClick = async (e: MouseEvent, shift: PlannedShift) => {
     e.stopPropagation()
     if (editingMode) return
 
-    if (!confirm(`Удалить смену «${shift.users?.full_name || 'админ'}» (${shift.shift_type === 'day' ? 'День' : 'Ночь'})?`)) {
+    if (!confirm(`Удалить смену «${shift.users?.full_name || 'админ'}» (${shift.shift_type === 'day' ? 'День' : 'Ночь'})?\n\nGoogle больше не вернёт эту смену, пока вы не поставите её снова вручную.`)) {
       return
     }
 
-    const { error } = await supabase.from('planned_shifts').delete().eq('id', shift.id)
-    if (error) {
-      alert(`Ошибка удаления: ${error.message}`)
-      return
-    }
-    await loadPlannedShifts()
+    await removePlannedShift(shift)
     if (modalDate) {
       setModalShifts(getShiftsForDate(modalDate).sort((a, b) => {
         if (a.shift_type === b.shift_type) return 0
         return a.shift_type === 'day' ? -1 : 1
       }))
+    }
+  }
+
+  const syncFromGoogle = async () => {
+    setSyncing(true)
+    setSyncMessage(null)
+    try {
+      const res = await fetch('/api/manager/sync-google-schedule', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) {
+        setSyncMessage(data.error || 'Ошибка синхронизации')
+        alert(data.error || 'Ошибка синхронизации')
+        return
+      }
+      const s = data.stats || {}
+      const msg =
+        data.message ||
+        `Добавлено: ${s.added ?? 0}, удалено из Google: ${s.removed ?? 0}, ручных не тронуто: ${s.skippedManual ?? 0}`
+      setSyncMessage(msg)
+      await loadPlannedShifts()
+    } catch (e) {
+      console.error(e)
+      alert('Ошибка сети при синхронизации')
+    } finally {
+      setSyncing(false)
     }
   }
 
@@ -184,16 +253,11 @@ export default function ShiftCalendarPage() {
     setShowModal(true)
   }
 
-  const deletePlannedShift = async (shiftId: string) => {
-    if (!confirm('Удалить запланированную смену?')) return
+  const deletePlannedShift = async (shift: PlannedShift) => {
+    if (!confirm('Удалить запланированную смену? Google не вернёт её, пока вы не поставите снова.')) return
 
     try {
-      const { error } = await supabase.from('planned_shifts').delete().eq('id', shiftId)
-      if (error) {
-        alert(`Ошибка удаления: ${error.message}`)
-        return
-      }
-      await loadPlannedShifts()
+      await removePlannedShift(shift)
       if (modalDate) {
         setModalShifts(getShiftsForDate(modalDate).sort((a, b) => {
           if (a.shift_type === b.shift_type) return 0
@@ -242,8 +306,11 @@ export default function ShiftCalendarPage() {
           </Link>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Календарь смен</h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Выставляйте смены администраторам. Нажмите на день, чтобы добавить/удалить смену.
+            Расписание из Google + ручные правки. Ручные изменения руководителя Google не перезаписывает.
           </p>
+          {syncMessage && (
+            <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-2 max-w-xl">{syncMessage}</p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -317,18 +384,29 @@ export default function ShiftCalendarPage() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setEditingMode(!editingMode)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-              editingMode
-                ? 'bg-red-600 text-white'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
-          >
-            <Edit2 className="w-4 h-4" />
-            {editingMode ? 'Выход из режима цветов' : 'Редактировать цвета'}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={syncFromGoogle}
+              disabled={syncing}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+              {syncing ? 'Синхронизация…' : 'Синк с Google'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditingMode(!editingMode)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                editingMode
+                  ? 'bg-red-600 text-white'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              <Edit2 className="w-4 h-4" />
+              {editingMode ? 'Выход из режима цветов' : 'Редактировать цвета'}
+            </button>
+          </div>
         </div>
 
         {/* Палитра админов с цветами */}
@@ -415,9 +493,11 @@ export default function ShiftCalendarPage() {
                       key={shift.id}
                       role="button"
                       onClick={(e) => handleShiftChipClick(e, shift)}
-                      className="text-[10px] px-1.5 py-0.5 rounded text-white truncate flex items-center gap-0.5 hover:ring-1 hover:ring-white/80"
+                      className={`text-[10px] px-1.5 py-0.5 rounded text-white truncate flex items-center gap-0.5 hover:ring-1 hover:ring-white/80 ${
+                        shift.manual_override || shift.source === 'manual' ? 'ring-1 ring-amber-300' : ''
+                      }`}
                       style={{ backgroundColor: shift.users?.color || '#3b82f6' }}
-                      title={`${shift.users?.full_name} — День. Клик — удалить`}
+                      title={`${shift.users?.full_name} — День (${shift.source === 'google' && !shift.manual_override ? 'Google' : 'вручную'}). Клик — удалить`}
                     >
                       <Sun className="w-2.5 h-2.5 shrink-0" />
                       <span className="truncate">{shift.users?.full_name}</span>
@@ -432,9 +512,11 @@ export default function ShiftCalendarPage() {
                       key={shift.id}
                       role="button"
                       onClick={(e) => handleShiftChipClick(e, shift)}
-                      className="text-[10px] px-1.5 py-0.5 rounded text-white truncate flex items-center gap-0.5 opacity-90 hover:ring-1 hover:ring-white/80"
+                      className={`text-[10px] px-1.5 py-0.5 rounded text-white truncate flex items-center gap-0.5 opacity-90 hover:ring-1 hover:ring-white/80 ${
+                        shift.manual_override || shift.source === 'manual' ? 'ring-1 ring-amber-300' : ''
+                      }`}
                       style={{ backgroundColor: shift.users?.color || '#3b82f6' }}
-                      title={`${shift.users?.full_name} — Ночь. Клик — удалить`}
+                      title={`${shift.users?.full_name} — Ночь (${shift.source === 'google' && !shift.manual_override ? 'Google' : 'вручную'}). Клик — удалить`}
                     >
                       <Moon className="w-2.5 h-2.5 shrink-0" />
                       <span className="truncate">{shift.users?.full_name}</span>
@@ -492,7 +574,8 @@ export default function ShiftCalendarPage() {
                       </div>
                     </div>
                     <button
-                      onClick={() => deletePlannedShift(shift.id)}
+                      type="button"
+                      onClick={() => deletePlannedShift(shift)}
                       className="text-red-600 hover:text-red-700 p-1"
                     >
                       <Trash2 className="w-4 h-4" />
