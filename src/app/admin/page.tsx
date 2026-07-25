@@ -669,6 +669,23 @@ export default function AdminPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+                  Аванс
+                </label>
+                <div className="relative">
+                  <Wallet className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.advance}
+                    onChange={(e) => setFormData({...formData, advance: e.target.value})}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
                   Тип смены
                 </label>
                 <select

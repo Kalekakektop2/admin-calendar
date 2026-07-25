@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from 'date-fns'
 import { ru } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, DollarSign, Wallet, TrendingUp, Users } from 'lucide-react'
+import { ChevronLeft, ChevronRight, DollarSign, Wallet, TrendingUp, Users, Wallet as SalaryIcon } from 'lucide-react'
 import { StatCard } from '@/components/ui/stat-card'
 import { Modal } from '@/components/ui/modal'
 import { formatCurrency } from '@/lib/utils'
@@ -160,27 +160,37 @@ export default function MonthlyReportsPage() {
 
       {/* Выбор месяца */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-        <div className="flex items-center justify-center">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center">
+            <button
+              onClick={previousMonth}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-900 dark:text-gray-100"
+            >
+              <ChevronLeft className="w-5 h-5 text-gray-900 dark:text-gray-100" />
+            </button>
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mx-4">
+              {format(currentDate, 'MMMM yyyy', { locale: ru })}
+            </h2>
+            <button
+              onClick={nextMonth}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-900 dark:text-gray-100"
+            >
+              <ChevronRight className="w-5 h-5 text-gray-900 dark:text-gray-100" />
+            </button>
+          </div>
+          
           <button
-            onClick={previousMonth}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-900 dark:text-gray-100"
+            onClick={() => router.push('/manager/admin-salary')}
+            className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
           >
-            <ChevronLeft className="w-5 h-5 text-gray-900 dark:text-gray-100" />
-          </button>
-          <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mx-4">
-            {format(currentDate, 'MMMM yyyy', { locale: ru })}
-          </h2>
-          <button
-            onClick={nextMonth}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-900 dark:text-gray-100"
-          >
-            <ChevronRight className="w-5 h-5 text-gray-900 dark:text-gray-100" />
+            <SalaryIcon className="w-5 h-5" />
+            Зарплата админа
           </button>
         </div>
       </div>
 
       {/* Общая статистика */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
           title="Общая выручка"
           value={formatCurrency(totalStats.totalRevenue)}
@@ -195,11 +205,6 @@ export default function MonthlyReportsPage() {
           title="Премии"
           value={formatCurrency(totalStats.totalBonus)}
           icon={TrendingUp}
-        />
-        <StatCard
-          title="Всего смен"
-          value={totalStats.shiftCount}
-          icon={Users}
         />
       </div>
 

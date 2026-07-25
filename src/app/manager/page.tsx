@@ -52,6 +52,7 @@ export default function ManagerPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [shifts, setShifts] = useState<Shift[]>([])
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [selectedShifts, setSelectedShifts] = useState<Shift[]>([])
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null)
   const [shiftPhotos, setShiftPhotos] = useState<ShiftPhoto[]>([])
   const [loading, setLoading] = useState(true)
@@ -219,6 +220,7 @@ export default function ManagerPage() {
     const dayShifts = getShiftsForDate(date)
     if (dayShifts.length > 0) {
       setSelectedDate(date)
+      setSelectedShifts(dayShifts)
       setSelectedShift(dayShifts[0])
       loadShiftPhotos(dayShifts[0].id)
     }
@@ -358,53 +360,104 @@ export default function ManagerPage() {
       </div>
 
       {/* Shift Details */}
-      {selectedShift && (
+      {selectedShifts.length > 0 && (
         <Modal
-          isOpen={!!selectedShift}
+          isOpen={selectedShifts.length > 0}
           onClose={() => {
+            setSelectedShifts([])
             setSelectedShift(null)
             setSelectedDate(null)
             setShiftPhotos([])
           }}
-          title={`Смена от ${format(selectedDate || new Date(selectedShift.shift_date), 'dd MMM yyyy', { locale: ru })}`}
+          title={`Смены от ${format(selectedDate || new Date(), 'dd MMM yyyy', { locale: ru })} (${selectedShifts.length})`}
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6">
-            <div>
-              <p className="text-sm text-gray-700 dark:text-gray-300">Администратор</p>
-              <p className="font-semibold text-gray-900 dark:text-white">{selectedShift.users.full_name}</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{selectedShift.users.email}</p>
-            </div>
+          <div className="space-y-6">
+            {selectedShifts.map((shift, index) => (
+              <div key={shift.id} className={index > 0 ? 'pt-6 border-t border-gray-200 dark:border-gray-700' : ''}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-4">
+                  <div>
+                    <p className="text-sm text-gray-700 dark:text-gray-300">Администратор</p>
+                    <p className="font-semibold text-gray-900 dark:text-white">{shift.users.full_name}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{shift.users.email}</p>
+                  </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-              <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
-                <p className="text-xs text-gray-600 dark:text-gray-400">Выручка</p>
-                <p className="font-bold text-gray-900 dark:text-white">{formatCurrency(selectedShift.total_revenue)}</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                    <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
+                      <p className="text-xs text-gray-600 dark:text-gray-400">Выручка</p>
+                      <p className="font-bold text-gray-900 dark:text-white">{formatCurrency(shift.total_revenue)}</p>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
+                      <p className="text-xs text-gray-600 dark:text-gray-400">Премия</p>
+                      <p className="font-bold text-green-600 dark:text-green-400">{formatCurrency(shift.bonus_amount)}</p>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
+                      <p className="text-xs text-gray-600 dark:text-gray-400">Наличные</p>
+                      <p className="font-bold text-gray-900 dark:text-white">{formatCurrency(shift.cash_balance)}</p>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
+                      <p className="text-xs text-gray-600 dark:text-gray-400">Инкассация</p>
+                      <p className="font-bold text-red-600 dark:text-red-400">{formatCurrency(shift.encashment || 0)}</p>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
+                      <p className="text-xs text-gray-600 dark:text-gray-400">Аванс</p>
+                      <p className="font-bold text-orange-600 dark:text-orange-400">{formatCurrency(shift.advance || 0)}</p>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
+                      <p className="text-xs text-gray-600 dark:text-gray-400">Тип смены</p>
+                      <p className="font-bold text-gray-900 dark:text-white">{shift.shift_type === 'day' ? 'День' : 'Ночь'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {shift.notes && (
+                  <div className="mb-4">
+                    <h4 className="font-semibold mb-2 text-gray-900 dark:text-white">Примечания</h4>
+                    <p className="text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded">{shift.notes}</p>
+                  </div>
+                )}
+
+                <div>
+                  <h4 className="font-semibold mb-2 text-gray-900 dark:text-white">Фотофиксация</h4>
+                  <button
+                    onClick={() => {
+                      setSelectedShift(shift)
+                      loadShiftPhotos(shift.id)
+                    }}
+                    className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 text-sm"
+                  >
+                    Показать фото ({shiftPhotos.length > 0 && shift.id === selectedShift?.id ? shiftPhotos.length : 'Загрузка...'})
+                  </button>
+                </div>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
-                <p className="text-xs text-gray-600 dark:text-gray-400">Премия</p>
-                <p className="font-bold text-green-600 dark:text-green-400">{formatCurrency(selectedShift.bonus_amount)}</p>
+            ))}
+
+            {selectedShift && (
+              <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
+                <h4 className="font-semibold mb-4 text-gray-900 dark:text-white">Фотофиксация ({shiftPhotos.length})</h4>
+                {shiftPhotos.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {shiftPhotos.map((photo) => (
+                      <div key={photo.id} className="relative group">
+                        <img
+                          src={photo.photo_url}
+                          alt="Shift photo"
+                          className="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-90"
+                          onClick={() => window.open(photo.photo_url, '_blank')}
+                        />
+                        <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-2 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                          {format(new Date(photo.uploaded_at), 'HH:mm')}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-900 dark:text-gray-100">Нет фотографий</p>
+                )}
               </div>
-              <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
-                <p className="text-xs text-gray-600 dark:text-gray-400">Наличные</p>
-                <p className="font-bold text-gray-900 dark:text-white">{formatCurrency(selectedShift.cash_balance)}</p>
-              </div>
-              <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
-                <p className="text-xs text-gray-600 dark:text-gray-400">Инкассация</p>
-                <p className="font-bold text-red-600 dark:text-red-400">{formatCurrency(selectedShift.encashment || 0)}</p>
-              </div>
-              <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
-                <p className="text-xs text-gray-600 dark:text-gray-400">Тип смены</p>
-                <p className="font-bold text-gray-900 dark:text-white">{selectedShift.shift_type === 'day' ? 'День' : 'Ночь'}</p>
-              </div>
-            </div>
+            )}
           </div>
-
-          {selectedShift.notes && (
-            <div className="mb-6">
-              <h4 className="font-semibold mb-2 text-gray-900 dark:text-white">Примечания</h4>
-              <p className="text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded">{selectedShift.notes}</p>
-            </div>
-          )}
+        </Modal>
+      )}
 
           <div>
             <h4 className="font-semibold mb-4 text-gray-900 dark:text-white">Фотофиксация ({shiftPhotos.length})</h4>
