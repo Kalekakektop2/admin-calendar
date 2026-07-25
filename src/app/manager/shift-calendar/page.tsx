@@ -5,7 +5,8 @@ import { createClient } from '@/lib/supabase/client'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isSameDay } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import Link from 'next/link'
-import { ChevronLeft, ChevronRight, Sun, Moon, Edit2, Trash2, Users, ArrowLeft, RefreshCw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Sun, Moon, Edit2, Trash2, Users, ArrowLeft, RefreshCw, Palette } from 'lucide-react'
+import { ADMIN_COLOR_PALETTE, assignDistinctColors } from '@/lib/admin-colors'
 
 interface Admin {
   id: string
@@ -290,6 +291,27 @@ export default function ShiftCalendarPage() {
     }
   }
 
+  /** Разнести всем админам сильно разные цвета одним кликом */
+  const autoAssignDistinctColors = async () => {
+    if (admins.length === 0) return
+    if (!confirm(`Назначить ${admins.length} админам разные яркие цвета автоматически?`)) return
+
+    try {
+      const colors = assignDistinctColors(admins.length)
+      await Promise.all(
+        admins.map((admin, i) =>
+          supabase.from('users').update({ color: colors[i] }).eq('id', admin.id)
+        )
+      )
+      await loadAdmins()
+      await loadPlannedShifts()
+      alert('Цвета обновлены')
+    } catch (error) {
+      console.error('Error auto-assigning colors:', error)
+      alert('Не удалось назначить цвета')
+    }
+  }
+
   const getDayShifts = (date: Date) => {
     return getShiftsForDate(date).filter(s => s.shift_type === 'day')
   }
@@ -406,6 +428,15 @@ export default function ShiftCalendarPage() {
             </button>
             <button
               type="button"
+              onClick={autoAssignDistinctColors}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600 text-white hover:bg-violet-700 transition-colors"
+              title="Разным админам — разные яркие цвета"
+            >
+              <Palette className="w-4 h-4" />
+              Авто-цвета
+            </button>
+            <button
+              type="button"
               onClick={() => setEditingMode(!editingMode)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                 editingMode
@@ -460,18 +491,6 @@ export default function ShiftCalendarPage() {
                 <span className={filterAdminId === admin.id ? 'text-white' : 'text-gray-900 dark:text-gray-100'}>
                   {admin.full_name}
                 </span>
-                {editingMode && (
-                  <input
-                    type="color"
-                    value={admin.color || '#3b82f6'}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => {
-                      e.stopPropagation()
-                      updateAdminColor(admin.id, e.target.value)
-                    }}
-                    className="w-6 h-6 p-0 border-0 cursor-pointer rounded"
-                  />
-                )}
               </button>
             ))}
           </div>
@@ -479,6 +498,78 @@ export default function ShiftCalendarPage() {
             На календаре: {filterAdminId === 'all' ? `все смены (${visibleShifts.length})` : `только ${selectedAdmin?.full_name || '…'} (${visibleShifts.length})`}
           </p>
         </div>
+
+        {/* Быстрый выбор сильно разных цветов */}
+        {editingMode && (
+          <div className="mt-4 pt-4 border-t dark:border-gray-700 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                Выберите админа в фильтре и нажмите цвет — или «Авто-цвета» для всех сразу
+              </p>
+              <button
+                type="button"
+                onClick={autoAssignDistinctColors}
+                className="text-sm px-3 py-1.5 rounded-lg bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200 hover:bg-violet-200"
+              >
+                Раздать всем разные цвета
+              </button>
+            </div>
+
+            {/* Общая палитра — клик задаёт цвет выбранному в фильтре админу */}
+            <div className="flex flex-wrap gap-2">
+              {ADMIN_COLOR_PALETTE.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  title={color}
+                  onClick={() => {
+                    if (filterAdminId === 'all' || !selectedAdmin) {
+                      alert('Сначала выберите конкретного админа в фильтре (не «Все админы»).')
+                      return
+                    }
+                    updateAdminColor(selectedAdmin.id, color)
+                  }}
+                  className="w-9 h-9 rounded-lg border-2 border-white shadow-md hover:scale-110 transition-transform ring-1 ring-black/10"
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+            </div>
+
+            {/* По каждому админу — своя строка с пресетами */}
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {admins.map((admin) => (
+                <div
+                  key={admin.id}
+                  className="flex flex-wrap items-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-900/40"
+                >
+                  <span
+                    className="w-4 h-4 rounded-full shrink-0 border border-white shadow"
+                    style={{ backgroundColor: admin.color || '#3b82f6' }}
+                  />
+                  <span className="text-sm font-medium min-w-[100px] text-gray-900 dark:text-gray-100">
+                    {admin.full_name}
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {ADMIN_COLOR_PALETTE.map((color) => (
+                      <button
+                        key={`${admin.id}-${color}`}
+                        type="button"
+                        title={color}
+                        onClick={() => updateAdminColor(admin.id, color)}
+                        className={`w-7 h-7 rounded-md border-2 shadow-sm hover:scale-110 transition-transform ${
+                          (admin.color || '').toLowerCase() === color.toLowerCase()
+                            ? 'border-gray-900 dark:border-white scale-110'
+                            : 'border-white/80'
+                        }`}
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Календарь */}

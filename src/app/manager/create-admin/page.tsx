@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
+import { ADMIN_COLOR_PALETTE } from '@/lib/admin-colors'
 
 export default function CreateAdminPage() {
   const router = useRouter()
@@ -128,12 +129,29 @@ export default function CreateAdminPage() {
             <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
               Цвет в календаре
             </label>
-            <input
-              type="color"
-              value={formData.color}
-              onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-              className="w-16 h-10 p-0 border-0 cursor-pointer"
-            />
+            <div className="flex flex-wrap gap-2 mb-2">
+              {ADMIN_COLOR_PALETTE.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  title={color}
+                  onClick={() => setFormData({ ...formData, color })}
+                  className={`w-9 h-9 rounded-lg border-2 shadow hover:scale-110 transition-transform ${
+                    formData.color.toLowerCase() === color.toLowerCase()
+                      ? 'border-gray-900 dark:border-white ring-2 ring-indigo-400'
+                      : 'border-white'
+                  }`}
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <span
+                className="w-8 h-8 rounded-lg border shadow"
+                style={{ backgroundColor: formData.color }}
+              />
+              <span className="text-xs text-gray-500">Выбрано: {formData.color}</span>
+            </div>
           </div>
 
           <div className="flex flex-col sm:flex-row justify-end gap-3">
