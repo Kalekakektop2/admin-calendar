@@ -265,6 +265,25 @@ export default function AdminPage() {
     }
   }
 
+  // Автоматическое определение типа смены и даты по текущему времени
+  const getAutoShiftInfo = () => {
+    const now = new Date()
+    const hour = now.getHours()
+    const isNight = hour >= 21 || hour < 9
+
+    let shiftDate = format(now, 'yyyy-MM-dd')
+    let shiftType: 'day' | 'night' = isNight ? 'night' : 'day'
+
+    // Если сейчас ночь (21:00-09:00) — смена считается за предыдущий день
+    if (isNight) {
+      const prevDay = new Date(now)
+      prevDay.setDate(prevDay.getDate() - 1)
+      shiftDate = format(prevDay, 'yyyy-MM-dd')
+    }
+
+    return { shiftDate, shiftType }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setUploading(true)
@@ -280,6 +299,29 @@ export default function AdminPage() {
         return
       }
 
+      const userId = isManager ? formData.user_id : user.id
+      if (!userId) {
+        throw new Error('Необходимо выбрать администратора')
+      }
+
+      // === НОВАЯ ЛОГИКА: автоопределение День/Ночь и даты ===
+      const { shiftDate: autoDate, shiftType: autoType } = getAutoShiftInfo()
+
+      // Проверка: существует ли запланированная смена на эту дату и тип?
+      const { data: plannedShift, error: plannedError } = await supabase
+        .from('planned_shifts')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('shift_date', autoDate)
+        .eq('shift_type', autoType)
+        .single()
+
+      if (plannedError || !plannedShift) {
+        alert(`У вас нет запланированной смены на ${autoDate} (${autoType === 'day' ? 'день' : 'ночь'}). Обратитесь к руководителю.`)
+        setUploading(false)
+        return
+      }
+
       // Проверяем, существует ли пользователь в таблице users
       const { data: existingUser, error: userCheckError } = await supabase
         .from('users')
@@ -288,7 +330,6 @@ export default function AdminPage() {
         .single()
 
       if (userCheckError || !existingUser) {
-        // Если пользователя нет, пробуем создать
         const { error: createUserError } = await supabase
           .from('users')
           .insert({
@@ -304,62 +345,27 @@ export default function AdminPage() {
         }
       }
 
-      // Create shift - рассчитываем бонус на клиентской стороне
       const calculatedBonus = calculateBonus()
-      
-      // Определяем ID пользователя для смены
-      const userId = isManager ? formData.user_id : user.id
-      
-      if (!userId) {
-        throw new Error('Необходимо выбрать администратора')
-      }
-      
-      // Валидация данных перед отправкой
       const totalRevenue = parseFloat(formData.total_revenue)
       const cashBalance = parseFloat(formData.cash_balance)
       
       if (isNaN(totalRevenue) || isNaN(cashBalance)) {
         throw new Error('Пожалуйста, введите корректные числовые значения')
       }
-      
-      if (isNaN(calculatedBonus)) {
-        throw new Error('Ошибка расчета бонуса')
-      }
-      
-      // Если ночная смена, то дата относится к следующему дню
-      let shiftDate = formData.shift_date
-      if (formData.shift_type === 'night') {
-        const date = new Date(formData.shift_date)
-        date.setDate(date.getDate() + 1)
-        shiftDate = date.toISOString().split('T')[0]
-      }
-      
-      console.log('Отправка данных:', {
-        user_id: userId,
-        shift_date: shiftDate,
-        original_date: formData.shift_date,
-        shift_type: formData.shift_type,
-        total_revenue: totalRevenue,
-        cash_balance: cashBalance,
-        shift_type: formData.shift_type,
-        bonus_amount: calculatedBonus,
-        notes: formData.notes,
-        encashment: formData.encashment ? parseFloat(formData.encashment) : null
-      })
-      
-      // Сначала пробуем с полем encashment
+
+      // Создаём смену с автоопределёнными значениями
       let insertData: any = {
         user_id: userId,
-        shift_date: shiftDate,
+        shift_date: autoDate,
         total_revenue: totalRevenue,
         cash_balance: cashBalance,
-        card_revenue: 0, // Устанавливаем 0 по умолчанию
-        shift_type: formData.shift_type,
+        card_revenue: 0,
+        shift_type: autoType,
         bonus_amount: calculatedBonus,
         notes: formData.notes || null,
         encashment: formData.encashment ? parseFloat(formData.encashment) : null,
         advance: formData.advance ? parseFloat(formData.advance) : null,
-        meal_allowance: formData.meal_allowance ? parseFloat(formData.meal_allowance) : 100,
+        meal_allowance: 100, // ЖЁСТКО фиксировано 100 рублей
       }
       
       let shift
@@ -619,19 +625,6 @@ export default function AdminPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
-                  Дата смены
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={formData.shift_date}
-                  onChange={(e) => setFormData({...formData, shift_date: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
                   Общая выручка (₽)
                 </label>
                 <div className="relative">
@@ -696,38 +689,6 @@ export default function AdminPage() {
                     className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
-                  Обед
-                </label>
-                <div className="relative">
-                  <Wallet className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="100"
-                    value={formData.meal_allowance}
-                    onChange={(e) => setFormData({...formData, meal_allowance: e.target.value})}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
-                  Тип смены
-                </label>
-                <select
-                  value={formData.shift_type}
-                  onChange={(e) => setFormData({...formData, shift_type: e.target.value as 'day' | 'night'})}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700"
-                >
-                  <option value="day">День</option>
-                  <option value="night">Ночь</option>
-                </select>
               </div>
 
               {isManager && (

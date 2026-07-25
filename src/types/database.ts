@@ -9,6 +9,15 @@ export type Json =
 export type UserRole = 'admin' | 'manager'
 export type ShiftType = 'day' | 'night'
 
+export interface PlannedShift {
+  id: string
+  user_id: string
+  shift_date: string
+  shift_type: ShiftType
+  created_at: string
+  updated_at: string
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -19,6 +28,7 @@ export interface Database {
           full_name: string
           username: string
           role: UserRole
+          color: string
           created_at: string
           updated_at: string
         }
@@ -28,6 +38,7 @@ export interface Database {
           full_name: string
           username: string
           role?: UserRole
+          color?: string
           created_at?: string
           updated_at?: string
         }
@@ -37,6 +48,7 @@ export interface Database {
           full_name?: string
           username?: string
           role?: UserRole
+          color?: string
           created_at?: string
           updated_at?: string
         }
@@ -199,6 +211,32 @@ export interface Database {
           date?: string
           comment?: string | null
           created_at?: string
+        }
+      },
+      planned_shifts: {
+        Row: {
+          id: string
+          user_id: string
+          shift_date: string
+          shift_type: ShiftType
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          shift_date: string
+          shift_type: ShiftType
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          shift_date?: string
+          shift_type?: ShiftType
+          created_at?: string
+          updated_at?: string
         }
       }
     }

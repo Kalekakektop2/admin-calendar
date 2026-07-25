@@ -60,6 +60,8 @@ export default async function AdminLayout({
               }`}>
                 {role === 'manager' ? 'Руководитель' : 'Администратор'}
               </span>
+              <Link href="/admin" className="ml-4 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">Главная</Link>
+              <Link href="/admin/my-shifts" className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">Мои смены</Link>
             </div>
             <div className="flex items-center space-x-2 sm:space-x-4">
               <span className="text-xs sm:text-sm text-gray-900 dark:text-gray-100 hidden sm:block">

@@ -54,6 +54,9 @@ export default async function ManagerLayout({
               <span className="ml-2 sm:ml-4 px-2 py-1 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 rounded">
                 Руководитель
               </span>
+              <Link href="/manager" className="ml-4 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">Все смены за месяц</Link>
+              <Link href="/manager/shift-calendar" className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">Календарь смен</Link>
+              <Link href="/manager/closed-shifts" className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">Закрытые смены</Link>
             </div>
             <div className="flex items-center space-x-2 sm:space-x-4">
               <span className="text-xs sm:text-sm text-gray-900 dark:text-gray-100 hidden sm:block">
