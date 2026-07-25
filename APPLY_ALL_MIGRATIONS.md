@@ -1,4 +1,4 @@
-# Применение всех миграций для системы зарплаты
+# Применение миграций для системы зарплаты
 
 ## 📋 Список миграций для применения
 
@@ -8,13 +8,13 @@
 - **Файл**: `supabase/migrations/004_fines.sql`
 - Создает таблицу штрафов с RLS политиками
 
-### 2. Таблица авансов
-- **Файл**: `supabase/migrations/007_advances.sql`
-- Создает таблицу авансов с RLS политиками
-
-### 3. Поле encashment (инкассация)
+### 2. Поле encashment (инкассация)
 - **Файл**: `supabase/migrations/005_encashment.sql`
 - Добавляет поле инкассации в таблицу shifts
+
+### 3. Таблица авансов
+- **Файл**: `supabase/migrations/007_advances.sql`
+- Создает таблицу авансов с RLS политиками
 
 ### 4. Поле advance (аванс)
 - **Файл**: `supabase/migrations/008_advance_field.sql`
@@ -23,6 +23,28 @@
 ### 5. Поле meal_allowance (обед)
 - **Файл**: `supabase/migrations/009_meal_allowance.sql`
 - Добавляет поле обеда в таблицу shifts (по умолчанию 100₽)
+
+## 🔍 Какие именно файлы применять
+
+Примените следующие конкретные файлы из папки `supabase/migrations/`:
+
+1. `004_fines.sql` (таблица штрафов)
+2. `005_encashment.sql` (поле инкассации)
+3. `007_advances.sql` (таблица авансов)
+4. `008_advance_field.sql` (поле аванса)
+5. `009_meal_allowance.sql` (поле обеда)
+
+## 🚫 НЕ применять
+
+Не применяйте старые миграции с теми же номерами:
+- ❌ `004_fix_bonus_amount_nullable.sql`
+- ❌ `005_remove_revenue_constraint.sql`
+- ❌ `006_add_shift_type.sql`
+- ❌ `006_update_bonus_config.sql`
+- ❌ `007_fix_photo_policies.sql`
+- ❌ `008_add_username.sql`
+- ❌ `009_increase_decimal_limits.sql`
+- ❌ `010_update_bonus_calculation.sql`
 
 ## 🔧 Как применить миграции
 
