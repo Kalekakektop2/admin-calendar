@@ -109,23 +109,61 @@ export default function AdminPage() {
       const totalCash = data?.reduce((sum, shift) => sum + shift.cash_balance, 0) || 0
       const totalBonus = data?.reduce((sum, shift) => sum + shift.bonus_amount, 0) || 0
       
-      // Расчет заработка за смены (дневная = 1500, ночная = 2200)
-      const shiftEarnings = data?.reduce((sum, shift) => {
+      // Определяем период: до 15 числа или после
+      const today = new Date()
+      const currentDay = today.getDate()
+      const isFirstHalfMonth = currentDay <= 15
+      
+      // Определяем даты для фильтрации
+      let startDate, endDate
+      
+      if (isFirstHalfMonth) {
+        // До 15 числа: считаем с 1 числа текущего месяца по сегодня
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1)
+        endDate = today
+      } else {
+        // После 15 числа: считаем с 16 числа по конец месяца
+        startDate = new Date(today.getFullYear(), today.getMonth(), 16)
+        endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+      }
+      
+      // Фильтруем смены за текущий период
+      const periodShifts = data?.filter(shift => {
+        const shiftDate = new Date(shift.shift_date)
+        return shiftDate >= startDate && shiftDate <= endDate
+      }) || []
+      
+      // Расчет заработка за смены за период (дневная = 1500, ночная = 2200)
+      const shiftEarnings = periodShifts.reduce((sum, shift) => {
         return sum + (shift.shift_type === 'day' ? 1500 : 2200)
-      }, 0) || 0
+      }, 0)
       
-      // Расчет штрафов за текущий месяц
-      const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM
-      const monthlyFines = fines
-        .filter(fine => fine.fine_date.startsWith(currentMonth))
-        .reduce((sum, fine) => sum + fine.amount, 0)
+      // Расчет премии за период
+      const periodBonus = periodShifts.reduce((sum, shift) => sum + shift.bonus_amount, 0)
       
-      // Примерный заработок = заработок за смены + премия - штрафы
-      const estimatedEarnings = shiftEarnings + totalBonus - monthlyFines
+      // Расчет штрафов за текущий период
+      const periodFines = fines.filter(fine => {
+        const fineDate = new Date(fine.fine_date)
+        return fineDate >= startDate && fineDate <= endDate
+      }).reduce((sum, fine) => sum + fine.amount, 0)
       
-      // Сейчас в кассе = общее количество из "Наличные за смену" - инкассация
+      // Примерный заработок за период = заработок за смены + премия - штрафы
+      const estimatedEarnings = shiftEarnings + periodBonus - periodFines
+      
+      // Сейчас в кассе = общее количество из "Наличные за смену" - инкассация (за все время)
       const totalEncashment = data?.reduce((sum, shift) => sum + (shift.encashment || 0), 0) || 0
       const currentCash = totalCash - totalEncashment
+      
+      console.log('Расчет статистики:', {
+        isFirstHalfMonth,
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0],
+        periodShifts: periodShifts.length,
+        shiftEarnings,
+        periodBonus,
+        periodFines,
+        estimatedEarnings
+      })
       
       setStats({
         totalRevenue,
@@ -414,15 +452,32 @@ export default function AdminPage() {
 
   const calculateBonus = () => {
     const revenue = parseFloat(formData.total_revenue) || 0
-    // Расчет бонуса: 15% от выручки
-    const bonus = revenue * 0.15
-    console.log('Расчет премии:', {
+    let bonus = 0
+    
+    // Система диапазонов для расчета премии
+    if (revenue >= 8000 && revenue < 10000) {
+      bonus = 300
+    } else if (revenue >= 10000 && revenue < 12000) {
+      bonus = 500
+    } else if (revenue >= 12000 && revenue < 14000) {
+      bonus = 700
+    } else if (revenue >= 14000 && revenue < 18000) {
+      bonus = 900
+    } else if (revenue >= 18000) {
+      bonus = 1500
+    }
+    
+    console.log('Расчет премии по диапазонам:', {
       revenue: revenue,
-      percentage: 0.15,
-      calculatedBonus: bonus,
-      finalBonus: parseFloat(bonus.toFixed(2))
+      bonus: bonus,
+      range: revenue >= 18000 ? '>=18000' : 
+             revenue >= 14000 ? '14000-18000' :
+             revenue >= 12000 ? '12000-14000' :
+             revenue >= 10000 ? '10000-12000' :
+             revenue >= 8000 ? '8000-10000' : '<8000'
     })
-    return parseFloat(bonus.toFixed(2))
+    
+    return bonus
   }
 
   if (loading) {
