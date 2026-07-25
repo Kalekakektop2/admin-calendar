@@ -4,15 +4,11 @@ import {
   parseGoogleScheduleCsv,
   resolveGoogleScheduleCsvUrl,
   slotKey,
-  adminNameMatchKeys,
+  normalizeAdminName,
   type ShiftType,
 } from '@/lib/google-schedule'
 
 export const dynamic = 'force-dynamic'
-
-function normalizeName(name: string): string {
-  return name.toLowerCase().replace(/\s+/g, ' ').trim()
-}
 
 export async function POST() {
   try {
@@ -90,34 +86,22 @@ export async function POST() {
 
     if (adminsError) throw adminsError
 
-    // Ключи: full_name, username, первое слово имени («Влад» из «Влад Иванов»)
+    // Только ТОЧНОЕ совпадение full_name или username.
+    // «Макс» и «Макс П» / «Макс О» — разные люди (не склеиваем).
     const adminByName = new Map<string, string>()
     for (const a of admins || []) {
       if (a.full_name) {
-        for (const k of adminNameMatchKeys(a.full_name)) {
-          if (!adminByName.has(k)) adminByName.set(k, a.id)
-        }
+        adminByName.set(normalizeAdminName(a.full_name), a.id)
       }
       if (a.username) {
-        const u = normalizeName(a.username)
+        const u = normalizeAdminName(a.username)
+        // username не перезаписывает full_name другого человека
         if (!adminByName.has(u)) adminByName.set(u, a.id)
       }
     }
 
     const resolveAdminId = (sheetName: string): string | null => {
-      for (const k of adminNameMatchKeys(sheetName)) {
-        const id = adminByName.get(k)
-        if (id) return id
-      }
-      // частичное: имя из таблицы входит в full_name
-      const n = normalizeName(sheetName)
-      for (const a of admins || []) {
-        const fn = normalizeName(a.full_name || '')
-        if (fn.includes(n) || n.includes(fn.split(' ')[0] || '')) {
-          return a.id
-        }
-      }
-      return null
+      return adminByName.get(normalizeAdminName(sheetName)) || null
     }
 
     const unmatchedNames = new Set<string>()

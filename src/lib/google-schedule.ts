@@ -158,12 +158,11 @@ function parseTimeRangeToType(raw: string): ShiftType | null {
 }
 
 /**
- * Имя админа: «Диана», «Влад», «Макс П», «Макс О», «Макс  »
- * П/О в конце часто = подмена/выходной-метка — оставляем базовое имя «Макс»
- * если это отдельный человек «Макс П» в системе, matching попробует оба варианта.
+ * Имя из колонки C как есть: «Диана», «Влад», «Макс», «Макс П», «Макс О» —
+ * это разные люди, суффиксы НЕ отрезаем.
  */
 function cleanAdminName(raw: string): string | null {
-  let s = raw.replace(/\s+/g, ' ').trim()
+  const s = raw.replace(/\s+/g, ' ').trim()
   if (!s) return null
 
   // Только код без имени
@@ -176,23 +175,9 @@ function cleanAdminName(raw: string): string | null {
   return s
 }
 
-/**
- * Варианты имени для сопоставления с users.full_name / username:
- * «Макс П» → [«макс п», «макс»]
- */
-export function adminNameMatchKeys(name: string): string[] {
-  const n = name.toLowerCase().replace(/\s+/g, ' ').trim()
-  const keys = new Set<string>([n])
-
-  // убрать суффикс П/О
-  const stripped = n.replace(/\s+[по]$/i, '').trim()
-  if (stripped) keys.add(stripped)
-
-  // первое слово
-  const first = n.split(' ')[0]
-  if (first) keys.add(first)
-
-  return Array.from(keys)
+/** Нормализация для сравнения (регистр/пробелы). Без урезания «П»/«О». */
+export function normalizeAdminName(name: string): string {
+  return name.toLowerCase().replace(/\s+/g, ' ').trim()
 }
 
 /**
